@@ -32,3 +32,9 @@ checks the status of the database as specified by `GOOSE_DBSTRING`
 ```sh
 goose up
 ```
+
+### undo all migrations
+
+```sh
+goose reset
+```
