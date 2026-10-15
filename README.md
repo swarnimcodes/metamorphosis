@@ -2,6 +2,19 @@
 
 overload progressively
 
+## how to run
+
+### pre req
+
+- set up postgres database & run migrations
+- go
+
+### run
+```sh
+go mod tidy
+go run main.go
+```
+
 
 ## database stuff
 
