@@ -1,0 +1,25 @@
+info:
+  name: create-new-user
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{BASE_URL}}/users/"
+  body:
+    type: json
+    data: |-
+      {
+        "email": "swarnim335@gmail.com",
+        "first_name": "Swarnim",
+        "last_name": "Barapatre",
+        "username": "smarniw"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
