@@ -8,7 +8,7 @@ http:
   url: "{{BASE_URL}}/users/username/:username"
   params:
     - name: username
-      value: swarnim
+      value: smarniw
       type: path
   auth: inherit
 

@@ -1,0 +1,20 @@
+info:
+  name: get-exercise-by-user-id
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{BASE_URL}}/exercises/:user_id"
+  params:
+    - name: user_id
+      value: 01a13eed-2c83-7aef-baa8-34220e830856
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

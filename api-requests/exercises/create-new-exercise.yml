@@ -1,0 +1,27 @@
+info:
+  name: create-new-exercise
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{BASE_URL}}/exercises/:user_id"
+  params:
+    - name: user_id
+      value: 01a13eed-2c83-7aef-baa8-34220e830856
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Barbell Bench Press",
+        "user_id": "01a13eed-2c83-7aef-baa8-34220e830856"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

@@ -12,6 +12,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/smarniw/metamorphosis/src/exercises"
 	"github.com/smarniw/metamorphosis/src/users"
 )
 
@@ -41,7 +42,9 @@ func main() {
 	r.Get("/", hellow)
 
 	userHandler := users.NewUserHandler(pool)
+	exerciseHandler := exercises.NewExerciseHandler(pool)
 	r.Mount("/users", userHandler.UserRouter())
+	r.Mount("/exercises", exerciseHandler.ExerciseRouter())
 
 	http.ListenAndServe(":"+port, r)
 }
