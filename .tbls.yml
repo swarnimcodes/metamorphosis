@@ -1,0 +1,58 @@
+# tbls config. Regenerate docs after any migration:
+#   run the API once with RUN_MIGRATIONS=true, then: tbls doc --rm-dist
+# Override the DSN (e.g. in CI) with the TBLS_DSN environment variable.
+dsn: postgres://postgres@localhost/metamorph?sslmode=disable
+docPath: docs/schema
+
+er:
+  format: mermaid
+  distance: 1
+
+exclude:
+  - _sqlx_migrations
+
+viewpoints:
+  - name: Auth
+    desc: Accounts, linked OAuth identities and sessions.
+    tables:
+      - users
+      - auth_identities
+      - refresh_tokens
+  - name: Exercise catalog
+    desc: Canonical exercises, muscles, aliases and stackable variation tags.
+    tables:
+      - exercises
+      - exercise_muscles
+      - muscle_groups
+      - exercise_aliases
+      - variation_tags
+      - exercise_variation_tags
+  - name: Workout logging
+    desc: Workouts, their exercises (with stacked tags), sets and gyms.
+    tables:
+      - users
+      - workouts
+      - workout_exercises
+      - workout_exercise_tags
+      - sets
+      - exercises
+      - variation_tags
+      - gyms
+  - name: Programs
+    desc: Splits, their days and target exercises, and enrollments.
+    tables:
+      - users
+      - programs
+      - program_days
+      - program_day_exercises
+      - program_day_exercise_tags
+      - program_enrollments
+      - exercises
+      - variation_tags
+  - name: Gyms
+    desc: Gym directory and users' saved gyms.
+    tables:
+      - gyms
+      - user_gyms
+      - users
+      - workouts

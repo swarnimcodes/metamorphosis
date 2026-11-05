@@ -1,0 +1,4472 @@
+{
+  "name": "metamorph",
+  "tables": [
+    {
+      "name": "public.users",
+      "type": "BASE TABLE",
+      "comment": "Application accounts. Identity proof lives in auth_identities, not here.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "email",
+          "type": "citext",
+          "nullable": false
+        },
+        {
+          "name": "username",
+          "type": "citext",
+          "nullable": false
+        },
+        {
+          "name": "display_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "avatar_url",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "unit_system",
+          "type": "unit_system",
+          "nullable": false,
+          "default": "'metric'::unit_system",
+          "comment": "Display preference only. All weights/distances are stored in metric."
+        },
+        {
+          "name": "timezone",
+          "type": "text",
+          "nullable": false,
+          "default": "'UTC'::text",
+          "comment": "IANA name. Used to bucket workouts into local days for streaks and the heatmap."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "users_pkey",
+          "def": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)",
+          "table": "public.users",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "users_email_key",
+          "def": "CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)",
+          "table": "public.users",
+          "columns": [
+            "email"
+          ]
+        },
+        {
+          "name": "users_username_key",
+          "def": "CREATE UNIQUE INDEX users_username_key ON public.users USING btree (username)",
+          "table": "public.users",
+          "columns": [
+            "username"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "users_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "users_display_name_not_null",
+          "type": "n",
+          "def": "NOT NULL display_name",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "display_name"
+          ]
+        },
+        {
+          "name": "users_email_not_null",
+          "type": "n",
+          "def": "NOT NULL email",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "email"
+          ]
+        },
+        {
+          "name": "users_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "users_timezone_not_null",
+          "type": "n",
+          "def": "NOT NULL timezone",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "timezone"
+          ]
+        },
+        {
+          "name": "users_unit_system_not_null",
+          "type": "n",
+          "def": "NOT NULL unit_system",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "unit_system"
+          ]
+        },
+        {
+          "name": "users_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
+          "name": "users_username_check",
+          "type": "CHECK",
+          "def": "CHECK (((username)::text ~ '^[a-z0-9_]{3,30}$'::text))",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "username"
+          ]
+        },
+        {
+          "name": "users_username_not_null",
+          "type": "n",
+          "def": "NOT NULL username",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "username"
+          ]
+        },
+        {
+          "name": "users_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "users_email_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (email)",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "email"
+          ]
+        },
+        {
+          "name": "users_username_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (username)",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "username"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "users_set_updated_at",
+          "def": "CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.auth_identities",
+      "type": "BASE TABLE",
+      "comment": "One row per linked OAuth account. A user may link several providers.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "provider",
+          "type": "auth_provider",
+          "nullable": false
+        },
+        {
+          "name": "provider_subject",
+          "type": "text",
+          "nullable": false,
+          "comment": "The provider's stable \"sub\" claim. Never key on email, which can change."
+        },
+        {
+          "name": "email_at_signup",
+          "type": "citext",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "last_login_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "auth_identities_pkey",
+          "def": "CREATE UNIQUE INDEX auth_identities_pkey ON public.auth_identities USING btree (id)",
+          "table": "public.auth_identities",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "auth_identities_provider_provider_subject_key",
+          "def": "CREATE UNIQUE INDEX auth_identities_provider_provider_subject_key ON public.auth_identities USING btree (provider, provider_subject)",
+          "table": "public.auth_identities",
+          "columns": [
+            "provider",
+            "provider_subject"
+          ]
+        },
+        {
+          "name": "auth_identities_user_id_idx",
+          "def": "CREATE INDEX auth_identities_user_id_idx ON public.auth_identities USING btree (user_id)",
+          "table": "public.auth_identities",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "auth_identities_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.auth_identities",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "auth_identities_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.auth_identities",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "auth_identities_provider_not_null",
+          "type": "n",
+          "def": "NOT NULL provider",
+          "table": "public.auth_identities",
+          "referenced_table": "",
+          "columns": [
+            "provider"
+          ]
+        },
+        {
+          "name": "auth_identities_provider_subject_not_null",
+          "type": "n",
+          "def": "NOT NULL provider_subject",
+          "table": "public.auth_identities",
+          "referenced_table": "",
+          "columns": [
+            "provider_subject"
+          ]
+        },
+        {
+          "name": "auth_identities_user_id_not_null",
+          "type": "n",
+          "def": "NOT NULL user_id",
+          "table": "public.auth_identities",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "auth_identities_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.auth_identities",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "auth_identities_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.auth_identities",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "auth_identities_provider_provider_subject_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (provider, provider_subject)",
+          "table": "public.auth_identities",
+          "referenced_table": "",
+          "columns": [
+            "provider",
+            "provider_subject"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.refresh_tokens",
+      "type": "BASE TABLE",
+      "comment": "Our own session tokens, issued after OAuth verification. Only a hash is stored.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "token_hash",
+          "type": "bytea",
+          "nullable": false
+        },
+        {
+          "name": "family_id",
+          "type": "uuid",
+          "nullable": false,
+          "comment": "Shared by all tokens descended from one login. Reuse of a revoked token revokes the whole family."
+        },
+        {
+          "name": "user_agent",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "refresh_tokens_pkey",
+          "def": "CREATE UNIQUE INDEX refresh_tokens_pkey ON public.refresh_tokens USING btree (id)",
+          "table": "public.refresh_tokens",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "refresh_tokens_token_hash_key",
+          "def": "CREATE UNIQUE INDEX refresh_tokens_token_hash_key ON public.refresh_tokens USING btree (token_hash)",
+          "table": "public.refresh_tokens",
+          "columns": [
+            "token_hash"
+          ]
+        },
+        {
+          "name": "refresh_tokens_user_id_idx",
+          "def": "CREATE INDEX refresh_tokens_user_id_idx ON public.refresh_tokens USING btree (user_id)",
+          "table": "public.refresh_tokens",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "refresh_tokens_family_id_idx",
+          "def": "CREATE INDEX refresh_tokens_family_id_idx ON public.refresh_tokens USING btree (family_id)",
+          "table": "public.refresh_tokens",
+          "columns": [
+            "family_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "refresh_tokens_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.refresh_tokens",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "refresh_tokens_expires_at_not_null",
+          "type": "n",
+          "def": "NOT NULL expires_at",
+          "table": "public.refresh_tokens",
+          "referenced_table": "",
+          "columns": [
+            "expires_at"
+          ]
+        },
+        {
+          "name": "refresh_tokens_family_id_not_null",
+          "type": "n",
+          "def": "NOT NULL family_id",
+          "table": "public.refresh_tokens",
+          "referenced_table": "",
+          "columns": [
+            "family_id"
+          ]
+        },
+        {
+          "name": "refresh_tokens_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.refresh_tokens",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "refresh_tokens_token_hash_not_null",
+          "type": "n",
+          "def": "NOT NULL token_hash",
+          "table": "public.refresh_tokens",
+          "referenced_table": "",
+          "columns": [
+            "token_hash"
+          ]
+        },
+        {
+          "name": "refresh_tokens_user_id_not_null",
+          "type": "n",
+          "def": "NOT NULL user_id",
+          "table": "public.refresh_tokens",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "refresh_tokens_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.refresh_tokens",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "refresh_tokens_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.refresh_tokens",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "refresh_tokens_token_hash_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (token_hash)",
+          "table": "public.refresh_tokens",
+          "referenced_table": "",
+          "columns": [
+            "token_hash"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.muscle_groups",
+      "type": "BASE TABLE",
+      "comment": "Reference list of muscle groups (chest, lats, quads, ...).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "muscle_groups_pkey",
+          "def": "CREATE UNIQUE INDEX muscle_groups_pkey ON public.muscle_groups USING btree (id)",
+          "table": "public.muscle_groups",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "muscle_groups_slug_key",
+          "def": "CREATE UNIQUE INDEX muscle_groups_slug_key ON public.muscle_groups USING btree (slug)",
+          "table": "public.muscle_groups",
+          "columns": [
+            "slug"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "muscle_groups_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.muscle_groups",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "muscle_groups_name_not_null",
+          "type": "n",
+          "def": "NOT NULL name",
+          "table": "public.muscle_groups",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "muscle_groups_slug_not_null",
+          "type": "n",
+          "def": "NOT NULL slug",
+          "table": "public.muscle_groups",
+          "referenced_table": "",
+          "columns": [
+            "slug"
+          ]
+        },
+        {
+          "name": "muscle_groups_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.muscle_groups",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "muscle_groups_slug_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (slug)",
+          "table": "public.muscle_groups",
+          "referenced_table": "",
+          "columns": [
+            "slug"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.exercises",
+      "type": "BASE TABLE",
+      "comment": "Canonical exercises, e.g. \"Lat Pulldown\". Variations are tags, not separate exercises.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "kind",
+          "type": "exercise_kind",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "exercise_status",
+          "nullable": false,
+          "default": "'user'::exercise_status",
+          "comment": "official = curated catalog; user = private to created_by; pending_review = user exercise proposed for promotion."
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "merged_into_id",
+          "type": "uuid",
+          "nullable": true,
+          "comment": "Set when a duplicate is collapsed into another exercise. Readers follow the pointer; history is never rewritten."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "exercises_pkey",
+          "def": "CREATE UNIQUE INDEX exercises_pkey ON public.exercises USING btree (id)",
+          "table": "public.exercises",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercises_slug_key",
+          "def": "CREATE UNIQUE INDEX exercises_slug_key ON public.exercises USING btree (slug)",
+          "table": "public.exercises",
+          "columns": [
+            "slug"
+          ]
+        },
+        {
+          "name": "exercises_name_trgm_idx",
+          "def": "CREATE INDEX exercises_name_trgm_idx ON public.exercises USING gin (name gin_trgm_ops)",
+          "table": "public.exercises",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "exercises_created_by_idx",
+          "def": "CREATE INDEX exercises_created_by_idx ON public.exercises USING btree (created_by)",
+          "table": "public.exercises",
+          "columns": [
+            "created_by"
+          ]
+        },
+        {
+          "name": "exercises_merged_into_idx",
+          "def": "CREATE INDEX exercises_merged_into_idx ON public.exercises USING btree (merged_into_id) WHERE (merged_into_id IS NOT NULL)",
+          "table": "public.exercises",
+          "columns": [
+            "merged_into_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "exercises_check",
+          "type": "CHECK",
+          "def": "CHECK (((status \u003c\u003e 'official'::exercise_status) OR (slug IS NOT NULL)))",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "slug"
+          ]
+        },
+        {
+          "name": "exercises_check1",
+          "type": "CHECK",
+          "def": "CHECK (((status \u003c\u003e 'user'::exercise_status) OR (created_by IS NOT NULL)))",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "created_by"
+          ]
+        },
+        {
+          "name": "exercises_check2",
+          "type": "CHECK",
+          "def": "CHECK (((merged_into_id IS NULL) OR (merged_into_id \u003c\u003e id)))",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "merged_into_id",
+            "id"
+          ]
+        },
+        {
+          "name": "exercises_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "exercises_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercises_kind_not_null",
+          "type": "n",
+          "def": "NOT NULL kind",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "kind"
+          ]
+        },
+        {
+          "name": "exercises_name_not_null",
+          "type": "n",
+          "def": "NOT NULL name",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "exercises_status_not_null",
+          "type": "n",
+          "def": "NOT NULL status",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "exercises_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
+          "name": "exercises_created_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.exercises",
+          "referenced_table": "public.users",
+          "columns": [
+            "created_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercises_merged_into_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (merged_into_id) REFERENCES exercises(id)",
+          "table": "public.exercises",
+          "referenced_table": "public.exercises",
+          "columns": [
+            "merged_into_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercises_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercises_slug_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (slug)",
+          "table": "public.exercises",
+          "referenced_table": "",
+          "columns": [
+            "slug"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "exercises_set_updated_at",
+          "def": "CREATE TRIGGER exercises_set_updated_at BEFORE UPDATE ON public.exercises FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.exercise_muscles",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "exercise_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "muscle_group_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "role",
+          "type": "muscle_role",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "exercise_muscles_pkey",
+          "def": "CREATE UNIQUE INDEX exercise_muscles_pkey ON public.exercise_muscles USING btree (exercise_id, muscle_group_id)",
+          "table": "public.exercise_muscles",
+          "columns": [
+            "exercise_id",
+            "muscle_group_id"
+          ]
+        },
+        {
+          "name": "exercise_muscles_muscle_idx",
+          "def": "CREATE INDEX exercise_muscles_muscle_idx ON public.exercise_muscles USING btree (muscle_group_id)",
+          "table": "public.exercise_muscles",
+          "columns": [
+            "muscle_group_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "exercise_muscles_exercise_id_not_null",
+          "type": "n",
+          "def": "NOT NULL exercise_id",
+          "table": "public.exercise_muscles",
+          "referenced_table": "",
+          "columns": [
+            "exercise_id"
+          ]
+        },
+        {
+          "name": "exercise_muscles_muscle_group_id_not_null",
+          "type": "n",
+          "def": "NOT NULL muscle_group_id",
+          "table": "public.exercise_muscles",
+          "referenced_table": "",
+          "columns": [
+            "muscle_group_id"
+          ]
+        },
+        {
+          "name": "exercise_muscles_role_not_null",
+          "type": "n",
+          "def": "NOT NULL role",
+          "table": "public.exercise_muscles",
+          "referenced_table": "",
+          "columns": [
+            "role"
+          ]
+        },
+        {
+          "name": "exercise_muscles_muscle_group_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (muscle_group_id) REFERENCES muscle_groups(id)",
+          "table": "public.exercise_muscles",
+          "referenced_table": "public.muscle_groups",
+          "columns": [
+            "muscle_group_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercise_muscles_exercise_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE",
+          "table": "public.exercise_muscles",
+          "referenced_table": "public.exercises",
+          "columns": [
+            "exercise_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercise_muscles_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (exercise_id, muscle_group_id)",
+          "table": "public.exercise_muscles",
+          "referenced_table": "",
+          "columns": [
+            "exercise_id",
+            "muscle_group_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.exercise_aliases",
+      "type": "BASE TABLE",
+      "comment": "Alternate names (\"Lat Pulldowns\") that resolve to a canonical exercise. Globally unique once normalised.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "exercise_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "alias",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "alias_normalized",
+          "type": "text",
+          "nullable": true,
+          "extra_def": "GENERATED ALWAYS AS btrim(lower(regexp_replace(alias, '[^[:alnum:]]+'::text, ' '::text, 'g'::text))) STORED"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "exercise_aliases_pkey",
+          "def": "CREATE UNIQUE INDEX exercise_aliases_pkey ON public.exercise_aliases USING btree (id)",
+          "table": "public.exercise_aliases",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercise_aliases_alias_normalized_key",
+          "def": "CREATE UNIQUE INDEX exercise_aliases_alias_normalized_key ON public.exercise_aliases USING btree (alias_normalized)",
+          "table": "public.exercise_aliases",
+          "columns": [
+            "alias_normalized"
+          ]
+        },
+        {
+          "name": "exercise_aliases_exercise_idx",
+          "def": "CREATE INDEX exercise_aliases_exercise_idx ON public.exercise_aliases USING btree (exercise_id)",
+          "table": "public.exercise_aliases",
+          "columns": [
+            "exercise_id"
+          ]
+        },
+        {
+          "name": "exercise_aliases_trgm_idx",
+          "def": "CREATE INDEX exercise_aliases_trgm_idx ON public.exercise_aliases USING gin (alias_normalized gin_trgm_ops)",
+          "table": "public.exercise_aliases",
+          "columns": [
+            "alias_normalized"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "exercise_aliases_alias_not_null",
+          "type": "n",
+          "def": "NOT NULL alias",
+          "table": "public.exercise_aliases",
+          "referenced_table": "",
+          "columns": [
+            "alias"
+          ]
+        },
+        {
+          "name": "exercise_aliases_exercise_id_not_null",
+          "type": "n",
+          "def": "NOT NULL exercise_id",
+          "table": "public.exercise_aliases",
+          "referenced_table": "",
+          "columns": [
+            "exercise_id"
+          ]
+        },
+        {
+          "name": "exercise_aliases_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.exercise_aliases",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercise_aliases_exercise_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE",
+          "table": "public.exercise_aliases",
+          "referenced_table": "public.exercises",
+          "columns": [
+            "exercise_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercise_aliases_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.exercise_aliases",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercise_aliases_alias_normalized_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (alias_normalized)",
+          "table": "public.exercise_aliases",
+          "referenced_table": "",
+          "columns": [
+            "alias_normalized"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.variation_tags",
+      "type": "BASE TABLE",
+      "comment": "Stackable modifiers (cable, v-bar, neutral grip). Slugs are immutable: they feed variant_key.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "type": "tag_category",
+          "nullable": false,
+          "default": "'other'::tag_category"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "variation_tags_pkey",
+          "def": "CREATE UNIQUE INDEX variation_tags_pkey ON public.variation_tags USING btree (id)",
+          "table": "public.variation_tags",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "variation_tags_slug_key",
+          "def": "CREATE UNIQUE INDEX variation_tags_slug_key ON public.variation_tags USING btree (slug)",
+          "table": "public.variation_tags",
+          "columns": [
+            "slug"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "variation_tags_category_not_null",
+          "type": "n",
+          "def": "NOT NULL category",
+          "table": "public.variation_tags",
+          "referenced_table": "",
+          "columns": [
+            "category"
+          ]
+        },
+        {
+          "name": "variation_tags_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.variation_tags",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "variation_tags_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.variation_tags",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "variation_tags_name_not_null",
+          "type": "n",
+          "def": "NOT NULL name",
+          "table": "public.variation_tags",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "variation_tags_slug_not_null",
+          "type": "n",
+          "def": "NOT NULL slug",
+          "table": "public.variation_tags",
+          "referenced_table": "",
+          "columns": [
+            "slug"
+          ]
+        },
+        {
+          "name": "variation_tags_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.variation_tags",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "variation_tags_slug_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (slug)",
+          "table": "public.variation_tags",
+          "referenced_table": "",
+          "columns": [
+            "slug"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.exercise_variation_tags",
+      "type": "BASE TABLE",
+      "comment": "Optional: tags suggested in the UI for an exercise. Not a restriction.",
+      "columns": [
+        {
+          "name": "exercise_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "tag_id",
+          "type": "uuid",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "exercise_variation_tags_pkey",
+          "def": "CREATE UNIQUE INDEX exercise_variation_tags_pkey ON public.exercise_variation_tags USING btree (exercise_id, tag_id)",
+          "table": "public.exercise_variation_tags",
+          "columns": [
+            "exercise_id",
+            "tag_id"
+          ]
+        },
+        {
+          "name": "exercise_variation_tags_tag_idx",
+          "def": "CREATE INDEX exercise_variation_tags_tag_idx ON public.exercise_variation_tags USING btree (tag_id)",
+          "table": "public.exercise_variation_tags",
+          "columns": [
+            "tag_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "exercise_variation_tags_exercise_id_not_null",
+          "type": "n",
+          "def": "NOT NULL exercise_id",
+          "table": "public.exercise_variation_tags",
+          "referenced_table": "",
+          "columns": [
+            "exercise_id"
+          ]
+        },
+        {
+          "name": "exercise_variation_tags_tag_id_not_null",
+          "type": "n",
+          "def": "NOT NULL tag_id",
+          "table": "public.exercise_variation_tags",
+          "referenced_table": "",
+          "columns": [
+            "tag_id"
+          ]
+        },
+        {
+          "name": "exercise_variation_tags_exercise_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE",
+          "table": "public.exercise_variation_tags",
+          "referenced_table": "public.exercises",
+          "columns": [
+            "exercise_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercise_variation_tags_tag_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (tag_id) REFERENCES variation_tags(id) ON DELETE CASCADE",
+          "table": "public.exercise_variation_tags",
+          "referenced_table": "public.variation_tags",
+          "columns": [
+            "tag_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "exercise_variation_tags_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (exercise_id, tag_id)",
+          "table": "public.exercise_variation_tags",
+          "referenced_table": "",
+          "columns": [
+            "exercise_id",
+            "tag_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.gyms",
+      "type": "BASE TABLE",
+      "comment": "Shared gym directory, e.g. \"Golds Gym, Aundh\". Plain lat/lng for now; PostGIS only if \"gyms near me\" needs it.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "chain",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "country_code",
+          "type": "character(2)",
+          "nullable": true
+        },
+        {
+          "name": "lat",
+          "type": "double precision",
+          "nullable": true
+        },
+        {
+          "name": "lng",
+          "type": "double precision",
+          "nullable": true
+        },
+        {
+          "name": "verified",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "gyms_pkey",
+          "def": "CREATE UNIQUE INDEX gyms_pkey ON public.gyms USING btree (id)",
+          "table": "public.gyms",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "gyms_name_trgm_idx",
+          "def": "CREATE INDEX gyms_name_trgm_idx ON public.gyms USING gin (name gin_trgm_ops)",
+          "table": "public.gyms",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "gyms_city_idx",
+          "def": "CREATE INDEX gyms_city_idx ON public.gyms USING btree (city)",
+          "table": "public.gyms",
+          "columns": [
+            "city"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "gyms_check",
+          "type": "CHECK",
+          "def": "CHECK (((lat IS NULL) = (lng IS NULL)))",
+          "table": "public.gyms",
+          "referenced_table": "",
+          "columns": [
+            "lat",
+            "lng"
+          ]
+        },
+        {
+          "name": "gyms_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.gyms",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "gyms_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.gyms",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "gyms_lat_check",
+          "type": "CHECK",
+          "def": "CHECK (((lat \u003e= ('-90'::integer)::double precision) AND (lat \u003c= (90)::double precision)))",
+          "table": "public.gyms",
+          "referenced_table": "",
+          "columns": [
+            "lat"
+          ]
+        },
+        {
+          "name": "gyms_lng_check",
+          "type": "CHECK",
+          "def": "CHECK (((lng \u003e= ('-180'::integer)::double precision) AND (lng \u003c= (180)::double precision)))",
+          "table": "public.gyms",
+          "referenced_table": "",
+          "columns": [
+            "lng"
+          ]
+        },
+        {
+          "name": "gyms_name_not_null",
+          "type": "n",
+          "def": "NOT NULL name",
+          "table": "public.gyms",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "gyms_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.gyms",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
+          "name": "gyms_verified_not_null",
+          "type": "n",
+          "def": "NOT NULL verified",
+          "table": "public.gyms",
+          "referenced_table": "",
+          "columns": [
+            "verified"
+          ]
+        },
+        {
+          "name": "gyms_created_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.gyms",
+          "referenced_table": "public.users",
+          "columns": [
+            "created_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "gyms_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.gyms",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "gyms_set_updated_at",
+          "def": "CREATE TRIGGER gyms_set_updated_at BEFORE UPDATE ON public.gyms FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.user_gyms",
+      "type": "BASE TABLE",
+      "comment": "A user's saved gyms. Doubles as gym membership for later social features.",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "gym_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "is_default",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "user_gyms_pkey",
+          "def": "CREATE UNIQUE INDEX user_gyms_pkey ON public.user_gyms USING btree (user_id, gym_id)",
+          "table": "public.user_gyms",
+          "columns": [
+            "user_id",
+            "gym_id"
+          ]
+        },
+        {
+          "name": "user_gyms_gym_idx",
+          "def": "CREATE INDEX user_gyms_gym_idx ON public.user_gyms USING btree (gym_id)",
+          "table": "public.user_gyms",
+          "columns": [
+            "gym_id"
+          ]
+        },
+        {
+          "name": "user_gyms_one_default_idx",
+          "def": "CREATE UNIQUE INDEX user_gyms_one_default_idx ON public.user_gyms USING btree (user_id) WHERE is_default",
+          "table": "public.user_gyms",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "user_gyms_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.user_gyms",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "user_gyms_gym_id_not_null",
+          "type": "n",
+          "def": "NOT NULL gym_id",
+          "table": "public.user_gyms",
+          "referenced_table": "",
+          "columns": [
+            "gym_id"
+          ]
+        },
+        {
+          "name": "user_gyms_is_default_not_null",
+          "type": "n",
+          "def": "NOT NULL is_default",
+          "table": "public.user_gyms",
+          "referenced_table": "",
+          "columns": [
+            "is_default"
+          ]
+        },
+        {
+          "name": "user_gyms_user_id_not_null",
+          "type": "n",
+          "def": "NOT NULL user_id",
+          "table": "public.user_gyms",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "user_gyms_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.user_gyms",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "user_gyms_gym_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (gym_id) REFERENCES gyms(id) ON DELETE CASCADE",
+          "table": "public.user_gyms",
+          "referenced_table": "public.gyms",
+          "columns": [
+            "gym_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "user_gyms_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (user_id, gym_id)",
+          "table": "public.user_gyms",
+          "referenced_table": "",
+          "columns": [
+            "user_id",
+            "gym_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.programs",
+      "type": "BASE TABLE",
+      "comment": "A split, e.g. \"Push / Pull / Legs\". forked_from_id supports copying a friend's program later.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "visibility",
+          "type": "visibility",
+          "nullable": false,
+          "default": "'private'::visibility"
+        },
+        {
+          "name": "forked_from_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "programs_pkey",
+          "def": "CREATE UNIQUE INDEX programs_pkey ON public.programs USING btree (id)",
+          "table": "public.programs",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "programs_user_idx",
+          "def": "CREATE INDEX programs_user_idx ON public.programs USING btree (user_id) WHERE (deleted_at IS NULL)",
+          "table": "public.programs",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "programs_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.programs",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "programs_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.programs",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "programs_name_not_null",
+          "type": "n",
+          "def": "NOT NULL name",
+          "table": "public.programs",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "programs_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.programs",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
+          "name": "programs_user_id_not_null",
+          "type": "n",
+          "def": "NOT NULL user_id",
+          "table": "public.programs",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "programs_visibility_not_null",
+          "type": "n",
+          "def": "NOT NULL visibility",
+          "table": "public.programs",
+          "referenced_table": "",
+          "columns": [
+            "visibility"
+          ]
+        },
+        {
+          "name": "programs_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.programs",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "programs_forked_from_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (forked_from_id) REFERENCES programs(id) ON DELETE SET NULL",
+          "table": "public.programs",
+          "referenced_table": "public.programs",
+          "columns": [
+            "forked_from_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "programs_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.programs",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "programs_set_updated_at",
+          "def": "CREATE TRIGGER programs_set_updated_at BEFORE UPDATE ON public.programs FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.program_days",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "program_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "nullable": false,
+          "comment": "Order within the program. Not unique-constrained, so reordering never needs deferred checks."
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "program_days_pkey",
+          "def": "CREATE UNIQUE INDEX program_days_pkey ON public.program_days USING btree (id)",
+          "table": "public.program_days",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_days_program_idx",
+          "def": "CREATE INDEX program_days_program_idx ON public.program_days USING btree (program_id, \"position\") WHERE (deleted_at IS NULL)",
+          "table": "public.program_days",
+          "columns": [
+            "program_id",
+            "position"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "program_days_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.program_days",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "program_days_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.program_days",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_days_name_not_null",
+          "type": "n",
+          "def": "NOT NULL name",
+          "table": "public.program_days",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "program_days_position_not_null",
+          "type": "n",
+          "def": "NOT NULL \"position\"",
+          "table": "public.program_days",
+          "referenced_table": "",
+          "columns": [
+            "position"
+          ]
+        },
+        {
+          "name": "program_days_program_id_not_null",
+          "type": "n",
+          "def": "NOT NULL program_id",
+          "table": "public.program_days",
+          "referenced_table": "",
+          "columns": [
+            "program_id"
+          ]
+        },
+        {
+          "name": "program_days_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.program_days",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
+          "name": "program_days_program_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE",
+          "table": "public.program_days",
+          "referenced_table": "public.programs",
+          "columns": [
+            "program_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_days_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.program_days",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "program_days_set_updated_at",
+          "def": "CREATE TRIGGER program_days_set_updated_at BEFORE UPDATE ON public.program_days FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.program_day_exercises",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "program_day_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "exercise_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "variant_key",
+          "type": "text",
+          "nullable": false,
+          "default": "''::text",
+          "comment": "Maintained by trigger from program_day_exercise_tags. See workout_exercises.variant_key."
+        },
+        {
+          "name": "target_sets",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "rep_min",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "rep_max",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "program_day_exercises_pkey",
+          "def": "CREATE UNIQUE INDEX program_day_exercises_pkey ON public.program_day_exercises USING btree (id)",
+          "table": "public.program_day_exercises",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_day_exercises_day_idx",
+          "def": "CREATE INDEX program_day_exercises_day_idx ON public.program_day_exercises USING btree (program_day_id, \"position\") WHERE (deleted_at IS NULL)",
+          "table": "public.program_day_exercises",
+          "columns": [
+            "program_day_id",
+            "position"
+          ]
+        },
+        {
+          "name": "program_day_exercises_exercise_idx",
+          "def": "CREATE INDEX program_day_exercises_exercise_idx ON public.program_day_exercises USING btree (exercise_id)",
+          "table": "public.program_day_exercises",
+          "columns": [
+            "exercise_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "program_day_exercises_check",
+          "type": "CHECK",
+          "def": "CHECK (((rep_min IS NULL) OR (rep_max IS NULL) OR (rep_min \u003c= rep_max)))",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "rep_min",
+            "rep_max"
+          ]
+        },
+        {
+          "name": "program_day_exercises_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "program_day_exercises_exercise_id_not_null",
+          "type": "n",
+          "def": "NOT NULL exercise_id",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "exercise_id"
+          ]
+        },
+        {
+          "name": "program_day_exercises_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_day_exercises_position_not_null",
+          "type": "n",
+          "def": "NOT NULL \"position\"",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "position"
+          ]
+        },
+        {
+          "name": "program_day_exercises_program_day_id_not_null",
+          "type": "n",
+          "def": "NOT NULL program_day_id",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "program_day_id"
+          ]
+        },
+        {
+          "name": "program_day_exercises_rep_max_check",
+          "type": "CHECK",
+          "def": "CHECK ((rep_max \u003e 0))",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "rep_max"
+          ]
+        },
+        {
+          "name": "program_day_exercises_rep_min_check",
+          "type": "CHECK",
+          "def": "CHECK ((rep_min \u003e 0))",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "rep_min"
+          ]
+        },
+        {
+          "name": "program_day_exercises_target_sets_check",
+          "type": "CHECK",
+          "def": "CHECK ((target_sets \u003e 0))",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "target_sets"
+          ]
+        },
+        {
+          "name": "program_day_exercises_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
+          "name": "program_day_exercises_variant_key_not_null",
+          "type": "n",
+          "def": "NOT NULL variant_key",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "variant_key"
+          ]
+        },
+        {
+          "name": "program_day_exercises_exercise_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (exercise_id) REFERENCES exercises(id)",
+          "table": "public.program_day_exercises",
+          "referenced_table": "public.exercises",
+          "columns": [
+            "exercise_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_day_exercises_program_day_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (program_day_id) REFERENCES program_days(id) ON DELETE CASCADE",
+          "table": "public.program_day_exercises",
+          "referenced_table": "public.program_days",
+          "columns": [
+            "program_day_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_day_exercises_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.program_day_exercises",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "program_day_exercises_set_updated_at",
+          "def": "CREATE TRIGGER program_day_exercises_set_updated_at BEFORE UPDATE ON public.program_day_exercises FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.program_day_exercise_tags",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "program_day_exercise_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "tag_id",
+          "type": "uuid",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "program_day_exercise_tags_pkey",
+          "def": "CREATE UNIQUE INDEX program_day_exercise_tags_pkey ON public.program_day_exercise_tags USING btree (program_day_exercise_id, tag_id)",
+          "table": "public.program_day_exercise_tags",
+          "columns": [
+            "program_day_exercise_id",
+            "tag_id"
+          ]
+        },
+        {
+          "name": "program_day_exercise_tags_tag_idx",
+          "def": "CREATE INDEX program_day_exercise_tags_tag_idx ON public.program_day_exercise_tags USING btree (tag_id)",
+          "table": "public.program_day_exercise_tags",
+          "columns": [
+            "tag_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "program_day_exercise_tags_program_day_exercise_id_not_null",
+          "type": "n",
+          "def": "NOT NULL program_day_exercise_id",
+          "table": "public.program_day_exercise_tags",
+          "referenced_table": "",
+          "columns": [
+            "program_day_exercise_id"
+          ]
+        },
+        {
+          "name": "program_day_exercise_tags_tag_id_not_null",
+          "type": "n",
+          "def": "NOT NULL tag_id",
+          "table": "public.program_day_exercise_tags",
+          "referenced_table": "",
+          "columns": [
+            "tag_id"
+          ]
+        },
+        {
+          "name": "program_day_exercise_tags_tag_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (tag_id) REFERENCES variation_tags(id)",
+          "table": "public.program_day_exercise_tags",
+          "referenced_table": "public.variation_tags",
+          "columns": [
+            "tag_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_day_exercise_tags_program_day_exercise_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (program_day_exercise_id) REFERENCES program_day_exercises(id) ON DELETE CASCADE",
+          "table": "public.program_day_exercise_tags",
+          "referenced_table": "public.program_day_exercises",
+          "columns": [
+            "program_day_exercise_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_day_exercise_tags_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (program_day_exercise_id, tag_id)",
+          "table": "public.program_day_exercise_tags",
+          "referenced_table": "",
+          "columns": [
+            "program_day_exercise_id",
+            "tag_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "program_day_exercise_tags_variant_key",
+          "def": "CREATE TRIGGER program_day_exercise_tags_variant_key AFTER INSERT OR DELETE ON public.program_day_exercise_tags FOR EACH ROW EXECUTE FUNCTION refresh_program_day_exercise_variant_key()"
+        }
+      ]
+    },
+    {
+      "name": "public.program_enrollments",
+      "type": "BASE TABLE",
+      "comment": "Which program a user is currently following. At most one active row per user.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "program_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "ended_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "program_enrollments_pkey",
+          "def": "CREATE UNIQUE INDEX program_enrollments_pkey ON public.program_enrollments USING btree (id)",
+          "table": "public.program_enrollments",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_enrollments_program_idx",
+          "def": "CREATE INDEX program_enrollments_program_idx ON public.program_enrollments USING btree (program_id)",
+          "table": "public.program_enrollments",
+          "columns": [
+            "program_id"
+          ]
+        },
+        {
+          "name": "program_enrollments_one_active_idx",
+          "def": "CREATE UNIQUE INDEX program_enrollments_one_active_idx ON public.program_enrollments USING btree (user_id) WHERE (ended_at IS NULL)",
+          "table": "public.program_enrollments",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "program_enrollments_check",
+          "type": "CHECK",
+          "def": "CHECK (((ended_at IS NULL) OR (ended_at \u003e= started_at)))",
+          "table": "public.program_enrollments",
+          "referenced_table": "",
+          "columns": [
+            "ended_at",
+            "started_at"
+          ]
+        },
+        {
+          "name": "program_enrollments_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.program_enrollments",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_enrollments_program_id_not_null",
+          "type": "n",
+          "def": "NOT NULL program_id",
+          "table": "public.program_enrollments",
+          "referenced_table": "",
+          "columns": [
+            "program_id"
+          ]
+        },
+        {
+          "name": "program_enrollments_started_at_not_null",
+          "type": "n",
+          "def": "NOT NULL started_at",
+          "table": "public.program_enrollments",
+          "referenced_table": "",
+          "columns": [
+            "started_at"
+          ]
+        },
+        {
+          "name": "program_enrollments_user_id_not_null",
+          "type": "n",
+          "def": "NOT NULL user_id",
+          "table": "public.program_enrollments",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "program_enrollments_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.program_enrollments",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_enrollments_program_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE",
+          "table": "public.program_enrollments",
+          "referenced_table": "public.programs",
+          "columns": [
+            "program_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "program_enrollments_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.program_enrollments",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.workouts",
+      "type": "BASE TABLE",
+      "comment": "One training session. Day bucketing (heatmap, streaks) uses started_at in users.timezone.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "gym_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "program_day_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "ended_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "visibility",
+          "type": "visibility",
+          "nullable": false,
+          "default": "'private'::visibility"
+        },
+        {
+          "name": "source",
+          "type": "workout_source",
+          "nullable": false,
+          "default": "'manual'::workout_source"
+        },
+        {
+          "name": "external_id",
+          "type": "text",
+          "nullable": true,
+          "comment": "Row key from an import source. With source it makes re-running an import idempotent."
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "workouts_pkey",
+          "def": "CREATE UNIQUE INDEX workouts_pkey ON public.workouts USING btree (id)",
+          "table": "public.workouts",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workouts_user_started_idx",
+          "def": "CREATE INDEX workouts_user_started_idx ON public.workouts USING btree (user_id, started_at DESC) WHERE (deleted_at IS NULL)",
+          "table": "public.workouts",
+          "columns": [
+            "user_id",
+            "started_at"
+          ]
+        },
+        {
+          "name": "workouts_gym_idx",
+          "def": "CREATE INDEX workouts_gym_idx ON public.workouts USING btree (gym_id) WHERE (gym_id IS NOT NULL)",
+          "table": "public.workouts",
+          "columns": [
+            "gym_id"
+          ]
+        },
+        {
+          "name": "workouts_program_day_idx",
+          "def": "CREATE INDEX workouts_program_day_idx ON public.workouts USING btree (program_day_id) WHERE (program_day_id IS NOT NULL)",
+          "table": "public.workouts",
+          "columns": [
+            "program_day_id"
+          ]
+        },
+        {
+          "name": "workouts_import_idempotency_idx",
+          "def": "CREATE UNIQUE INDEX workouts_import_idempotency_idx ON public.workouts USING btree (user_id, source, external_id) WHERE (external_id IS NOT NULL)",
+          "table": "public.workouts",
+          "columns": [
+            "user_id",
+            "source",
+            "external_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "workouts_check",
+          "type": "CHECK",
+          "def": "CHECK (((ended_at IS NULL) OR (ended_at \u003e= started_at)))",
+          "table": "public.workouts",
+          "referenced_table": "",
+          "columns": [
+            "ended_at",
+            "started_at"
+          ]
+        },
+        {
+          "name": "workouts_check1",
+          "type": "CHECK",
+          "def": "CHECK (((source = 'manual'::workout_source) = (external_id IS NULL)))",
+          "table": "public.workouts",
+          "referenced_table": "",
+          "columns": [
+            "source",
+            "external_id"
+          ]
+        },
+        {
+          "name": "workouts_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.workouts",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "workouts_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.workouts",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workouts_source_not_null",
+          "type": "n",
+          "def": "NOT NULL source",
+          "table": "public.workouts",
+          "referenced_table": "",
+          "columns": [
+            "source"
+          ]
+        },
+        {
+          "name": "workouts_started_at_not_null",
+          "type": "n",
+          "def": "NOT NULL started_at",
+          "table": "public.workouts",
+          "referenced_table": "",
+          "columns": [
+            "started_at"
+          ]
+        },
+        {
+          "name": "workouts_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.workouts",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
+          "name": "workouts_user_id_not_null",
+          "type": "n",
+          "def": "NOT NULL user_id",
+          "table": "public.workouts",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "workouts_visibility_not_null",
+          "type": "n",
+          "def": "NOT NULL visibility",
+          "table": "public.workouts",
+          "referenced_table": "",
+          "columns": [
+            "visibility"
+          ]
+        },
+        {
+          "name": "workouts_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.workouts",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workouts_gym_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (gym_id) REFERENCES gyms(id) ON DELETE SET NULL",
+          "table": "public.workouts",
+          "referenced_table": "public.gyms",
+          "columns": [
+            "gym_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workouts_program_day_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (program_day_id) REFERENCES program_days(id) ON DELETE SET NULL",
+          "table": "public.workouts",
+          "referenced_table": "public.program_days",
+          "columns": [
+            "program_day_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workouts_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.workouts",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "workouts_set_updated_at",
+          "def": "CREATE TRIGGER workouts_set_updated_at BEFORE UPDATE ON public.workouts FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.workout_exercises",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "workout_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "exercise_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "variant_key",
+          "type": "text",
+          "nullable": false,
+          "default": "''::text",
+          "comment": "Sorted tag slugs joined by \"+\", e.g. \"cable+v-bar\"; empty when untagged. Maintained by trigger from workout_exercise_tags. Group by (exercise_id, variant_key) for progress and leaderboards."
+        },
+        {
+          "name": "superset_group",
+          "type": "integer",
+          "nullable": true,
+          "comment": "Exercises in one workout sharing the same number are a superset."
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "workout_exercises_pkey",
+          "def": "CREATE UNIQUE INDEX workout_exercises_pkey ON public.workout_exercises USING btree (id)",
+          "table": "public.workout_exercises",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workout_exercises_workout_idx",
+          "def": "CREATE INDEX workout_exercises_workout_idx ON public.workout_exercises USING btree (workout_id, \"position\") WHERE (deleted_at IS NULL)",
+          "table": "public.workout_exercises",
+          "columns": [
+            "workout_id",
+            "position"
+          ]
+        },
+        {
+          "name": "workout_exercises_progress_idx",
+          "def": "CREATE INDEX workout_exercises_progress_idx ON public.workout_exercises USING btree (exercise_id, variant_key) WHERE (deleted_at IS NULL)",
+          "table": "public.workout_exercises",
+          "columns": [
+            "exercise_id",
+            "variant_key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "workout_exercises_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.workout_exercises",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "workout_exercises_exercise_id_not_null",
+          "type": "n",
+          "def": "NOT NULL exercise_id",
+          "table": "public.workout_exercises",
+          "referenced_table": "",
+          "columns": [
+            "exercise_id"
+          ]
+        },
+        {
+          "name": "workout_exercises_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.workout_exercises",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workout_exercises_position_not_null",
+          "type": "n",
+          "def": "NOT NULL \"position\"",
+          "table": "public.workout_exercises",
+          "referenced_table": "",
+          "columns": [
+            "position"
+          ]
+        },
+        {
+          "name": "workout_exercises_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.workout_exercises",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
+          "name": "workout_exercises_variant_key_not_null",
+          "type": "n",
+          "def": "NOT NULL variant_key",
+          "table": "public.workout_exercises",
+          "referenced_table": "",
+          "columns": [
+            "variant_key"
+          ]
+        },
+        {
+          "name": "workout_exercises_workout_id_not_null",
+          "type": "n",
+          "def": "NOT NULL workout_id",
+          "table": "public.workout_exercises",
+          "referenced_table": "",
+          "columns": [
+            "workout_id"
+          ]
+        },
+        {
+          "name": "workout_exercises_exercise_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (exercise_id) REFERENCES exercises(id)",
+          "table": "public.workout_exercises",
+          "referenced_table": "public.exercises",
+          "columns": [
+            "exercise_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workout_exercises_workout_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE",
+          "table": "public.workout_exercises",
+          "referenced_table": "public.workouts",
+          "columns": [
+            "workout_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workout_exercises_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.workout_exercises",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "workout_exercises_set_updated_at",
+          "def": "CREATE TRIGGER workout_exercises_set_updated_at BEFORE UPDATE ON public.workout_exercises FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.workout_exercise_tags",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "workout_exercise_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "tag_id",
+          "type": "uuid",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "workout_exercise_tags_pkey",
+          "def": "CREATE UNIQUE INDEX workout_exercise_tags_pkey ON public.workout_exercise_tags USING btree (workout_exercise_id, tag_id)",
+          "table": "public.workout_exercise_tags",
+          "columns": [
+            "workout_exercise_id",
+            "tag_id"
+          ]
+        },
+        {
+          "name": "workout_exercise_tags_tag_idx",
+          "def": "CREATE INDEX workout_exercise_tags_tag_idx ON public.workout_exercise_tags USING btree (tag_id)",
+          "table": "public.workout_exercise_tags",
+          "columns": [
+            "tag_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "workout_exercise_tags_tag_id_not_null",
+          "type": "n",
+          "def": "NOT NULL tag_id",
+          "table": "public.workout_exercise_tags",
+          "referenced_table": "",
+          "columns": [
+            "tag_id"
+          ]
+        },
+        {
+          "name": "workout_exercise_tags_workout_exercise_id_not_null",
+          "type": "n",
+          "def": "NOT NULL workout_exercise_id",
+          "table": "public.workout_exercise_tags",
+          "referenced_table": "",
+          "columns": [
+            "workout_exercise_id"
+          ]
+        },
+        {
+          "name": "workout_exercise_tags_tag_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (tag_id) REFERENCES variation_tags(id)",
+          "table": "public.workout_exercise_tags",
+          "referenced_table": "public.variation_tags",
+          "columns": [
+            "tag_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workout_exercise_tags_workout_exercise_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (workout_exercise_id) REFERENCES workout_exercises(id) ON DELETE CASCADE",
+          "table": "public.workout_exercise_tags",
+          "referenced_table": "public.workout_exercises",
+          "columns": [
+            "workout_exercise_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workout_exercise_tags_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (workout_exercise_id, tag_id)",
+          "table": "public.workout_exercise_tags",
+          "referenced_table": "",
+          "columns": [
+            "workout_exercise_id",
+            "tag_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "workout_exercise_tags_variant_key",
+          "def": "CREATE TRIGGER workout_exercise_tags_variant_key AFTER INSERT OR DELETE ON public.workout_exercise_tags FOR EACH ROW EXECUTE FUNCTION refresh_workout_exercise_variant_key()"
+        }
+      ]
+    },
+    {
+      "name": "public.sets",
+      "type": "BASE TABLE",
+      "comment": "Individual sets. Which of weight/reps/duration/distance are required depends on exercises.kind; enforced in the API.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "uuidv7()"
+        },
+        {
+          "name": "workout_exercise_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "set_type",
+          "type": "set_type",
+          "nullable": false,
+          "default": "'working'::set_type"
+        },
+        {
+          "name": "weight_kg",
+          "type": "numeric(7,3)",
+          "nullable": true
+        },
+        {
+          "name": "reps",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "duration_s",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "distance_m",
+          "type": "numeric(9,2)",
+          "nullable": true
+        },
+        {
+          "name": "rpe",
+          "type": "numeric(3,1)",
+          "nullable": true
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sets_pkey",
+          "def": "CREATE UNIQUE INDEX sets_pkey ON public.sets USING btree (id)",
+          "table": "public.sets",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sets_workout_exercise_idx",
+          "def": "CREATE INDEX sets_workout_exercise_idx ON public.sets USING btree (workout_exercise_id, \"position\") WHERE (deleted_at IS NULL)",
+          "table": "public.sets",
+          "columns": [
+            "workout_exercise_id",
+            "position"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "sets_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "sets_distance_m_check",
+          "type": "CHECK",
+          "def": "CHECK ((distance_m \u003e= (0)::numeric))",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "distance_m"
+          ]
+        },
+        {
+          "name": "sets_duration_s_check",
+          "type": "CHECK",
+          "def": "CHECK ((duration_s \u003e= 0))",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "duration_s"
+          ]
+        },
+        {
+          "name": "sets_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sets_position_not_null",
+          "type": "n",
+          "def": "NOT NULL \"position\"",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "position"
+          ]
+        },
+        {
+          "name": "sets_reps_check",
+          "type": "CHECK",
+          "def": "CHECK ((reps \u003e= 0))",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "reps"
+          ]
+        },
+        {
+          "name": "sets_rpe_check",
+          "type": "CHECK",
+          "def": "CHECK (((rpe \u003e= (1)::numeric) AND (rpe \u003c= (10)::numeric)))",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "rpe"
+          ]
+        },
+        {
+          "name": "sets_set_type_not_null",
+          "type": "n",
+          "def": "NOT NULL set_type",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "set_type"
+          ]
+        },
+        {
+          "name": "sets_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
+          "name": "sets_weight_kg_check",
+          "type": "CHECK",
+          "def": "CHECK ((weight_kg \u003e= (0)::numeric))",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "weight_kg"
+          ]
+        },
+        {
+          "name": "sets_workout_exercise_id_not_null",
+          "type": "n",
+          "def": "NOT NULL workout_exercise_id",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "workout_exercise_id"
+          ]
+        },
+        {
+          "name": "sets_workout_exercise_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (workout_exercise_id) REFERENCES workout_exercises(id) ON DELETE CASCADE",
+          "table": "public.sets",
+          "referenced_table": "public.workout_exercises",
+          "columns": [
+            "workout_exercise_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sets_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.sets",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "sets_set_updated_at",
+          "def": "CREATE TRIGGER sets_set_updated_at BEFORE UPDATE ON public.sets FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "_sqlx_test.databases",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "db_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "test_path",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "databases_pkey",
+          "def": "CREATE UNIQUE INDEX databases_pkey ON _sqlx_test.databases USING btree (db_name)",
+          "table": "_sqlx_test.databases",
+          "columns": [
+            "db_name"
+          ]
+        },
+        {
+          "name": "databases_created_at",
+          "def": "CREATE INDEX databases_created_at ON _sqlx_test.databases USING btree (created_at)",
+          "table": "_sqlx_test.databases",
+          "columns": [
+            "created_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "databases_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "_sqlx_test.databases",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "databases_db_name_not_null",
+          "type": "n",
+          "def": "NOT NULL db_name",
+          "table": "_sqlx_test.databases",
+          "referenced_table": "",
+          "columns": [
+            "db_name"
+          ]
+        },
+        {
+          "name": "databases_test_path_not_null",
+          "type": "n",
+          "def": "NOT NULL test_path",
+          "table": "_sqlx_test.databases",
+          "referenced_table": "",
+          "columns": [
+            "test_path"
+          ]
+        },
+        {
+          "name": "databases_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (db_name)",
+          "table": "_sqlx_test.databases",
+          "referenced_table": "",
+          "columns": [
+            "db_name"
+          ]
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "table": "public.auth_identities",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.refresh_tokens",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.exercises",
+      "columns": [
+        "created_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.exercises",
+      "columns": [
+        "merged_into_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.exercises",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (merged_into_id) REFERENCES exercises(id)"
+    },
+    {
+      "table": "public.exercise_muscles",
+      "columns": [
+        "muscle_group_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.muscle_groups",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (muscle_group_id) REFERENCES muscle_groups(id)"
+    },
+    {
+      "table": "public.exercise_muscles",
+      "columns": [
+        "exercise_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.exercises",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.exercise_aliases",
+      "columns": [
+        "exercise_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.exercises",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.exercise_variation_tags",
+      "columns": [
+        "exercise_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.exercises",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.exercise_variation_tags",
+      "columns": [
+        "tag_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.variation_tags",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (tag_id) REFERENCES variation_tags(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.gyms",
+      "columns": [
+        "created_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.user_gyms",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.user_gyms",
+      "columns": [
+        "gym_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.gyms",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (gym_id) REFERENCES gyms(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.programs",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.programs",
+      "columns": [
+        "forked_from_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.programs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (forked_from_id) REFERENCES programs(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.program_days",
+      "columns": [
+        "program_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.programs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.program_day_exercises",
+      "columns": [
+        "exercise_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.exercises",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (exercise_id) REFERENCES exercises(id)"
+    },
+    {
+      "table": "public.program_day_exercises",
+      "columns": [
+        "program_day_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.program_days",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (program_day_id) REFERENCES program_days(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.program_day_exercise_tags",
+      "columns": [
+        "tag_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.variation_tags",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (tag_id) REFERENCES variation_tags(id)"
+    },
+    {
+      "table": "public.program_day_exercise_tags",
+      "columns": [
+        "program_day_exercise_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.program_day_exercises",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (program_day_exercise_id) REFERENCES program_day_exercises(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.program_enrollments",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.program_enrollments",
+      "columns": [
+        "program_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.programs",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.workouts",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.workouts",
+      "columns": [
+        "gym_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.gyms",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (gym_id) REFERENCES gyms(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.workouts",
+      "columns": [
+        "program_day_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.program_days",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (program_day_id) REFERENCES program_days(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.workout_exercises",
+      "columns": [
+        "exercise_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.exercises",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (exercise_id) REFERENCES exercises(id)"
+    },
+    {
+      "table": "public.workout_exercises",
+      "columns": [
+        "workout_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.workouts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (workout_id) REFERENCES workouts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.workout_exercise_tags",
+      "columns": [
+        "tag_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.variation_tags",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (tag_id) REFERENCES variation_tags(id)"
+    },
+    {
+      "table": "public.workout_exercise_tags",
+      "columns": [
+        "workout_exercise_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.workout_exercises",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (workout_exercise_id) REFERENCES workout_exercises(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.sets",
+      "columns": [
+        "workout_exercise_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.workout_exercises",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (workout_exercise_id) REFERENCES workout_exercises(id) ON DELETE CASCADE"
+    }
+  ],
+  "functions": [
+    {
+      "name": "public.citextin",
+      "return_type": "citext",
+      "arguments": "cstring",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citextout",
+      "return_type": "cstring",
+      "arguments": "citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citextrecv",
+      "return_type": "citext",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citextsend",
+      "return_type": "bytea",
+      "arguments": "citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext",
+      "return_type": "citext",
+      "arguments": "character",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext",
+      "return_type": "citext",
+      "arguments": "boolean",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext",
+      "return_type": "citext",
+      "arguments": "inet",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_eq",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_ne",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_lt",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_le",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_gt",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_ge",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_cmp",
+      "return_type": "int4",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_hash",
+      "return_type": "int4",
+      "arguments": "citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_smaller",
+      "return_type": "citext",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_larger",
+      "return_type": "citext",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.min",
+      "return_type": "citext",
+      "arguments": "citext",
+      "type": "a"
+    },
+    {
+      "name": "public.max",
+      "return_type": "citext",
+      "arguments": "citext",
+      "type": "a"
+    },
+    {
+      "name": "public.texticlike",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.texticnlike",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.texticregexeq",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.texticregexne",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.texticlike",
+      "return_type": "bool",
+      "arguments": "citext, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.texticnlike",
+      "return_type": "bool",
+      "arguments": "citext, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.texticregexeq",
+      "return_type": "bool",
+      "arguments": "citext, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.texticregexne",
+      "return_type": "bool",
+      "arguments": "citext, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.regexp_match",
+      "return_type": "_text",
+      "arguments": "string citext, pattern citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.regexp_match",
+      "return_type": "_text",
+      "arguments": "string citext, pattern citext, flags text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.regexp_matches",
+      "return_type": "_text",
+      "arguments": "string citext, pattern citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.regexp_matches",
+      "return_type": "_text",
+      "arguments": "string citext, pattern citext, flags text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.regexp_replace",
+      "return_type": "text",
+      "arguments": "string citext, pattern citext, replacement text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.regexp_replace",
+      "return_type": "text",
+      "arguments": "string citext, pattern citext, replacement text, flags text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.regexp_split_to_array",
+      "return_type": "_text",
+      "arguments": "string citext, pattern citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.regexp_split_to_array",
+      "return_type": "_text",
+      "arguments": "string citext, pattern citext, flags text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.regexp_split_to_table",
+      "return_type": "text",
+      "arguments": "string citext, pattern citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.regexp_split_to_table",
+      "return_type": "text",
+      "arguments": "string citext, pattern citext, flags text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.strpos",
+      "return_type": "int4",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.replace",
+      "return_type": "text",
+      "arguments": "citext, citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.split_part",
+      "return_type": "text",
+      "arguments": "citext, citext, integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.translate",
+      "return_type": "text",
+      "arguments": "citext, citext, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_pattern_lt",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_pattern_le",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_pattern_gt",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_pattern_ge",
+      "return_type": "bool",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_pattern_cmp",
+      "return_type": "int4",
+      "arguments": "citext, citext",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.citext_hash_extended",
+      "return_type": "int8",
+      "arguments": "citext, bigint",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_limit",
+      "return_type": "float4",
+      "arguments": "real",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.show_limit",
+      "return_type": "float4",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.show_trgm",
+      "return_type": "_text",
+      "arguments": "text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.similarity",
+      "return_type": "float4",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.similarity_op",
+      "return_type": "bool",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.word_similarity",
+      "return_type": "float4",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.word_similarity_op",
+      "return_type": "bool",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.word_similarity_commutator_op",
+      "return_type": "bool",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.similarity_dist",
+      "return_type": "float4",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.word_similarity_dist_op",
+      "return_type": "float4",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.word_similarity_dist_commutator_op",
+      "return_type": "float4",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_in",
+      "return_type": "gtrgm",
+      "arguments": "cstring",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_out",
+      "return_type": "cstring",
+      "arguments": "gtrgm",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_consistent",
+      "return_type": "bool",
+      "arguments": "internal, text, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_distance",
+      "return_type": "float8",
+      "arguments": "internal, text, smallint, oid, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_compress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_decompress",
+      "return_type": "internal",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_penalty",
+      "return_type": "internal",
+      "arguments": "internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_picksplit",
+      "return_type": "internal",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_union",
+      "return_type": "gtrgm",
+      "arguments": "internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_same",
+      "return_type": "internal",
+      "arguments": "gtrgm, gtrgm, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gin_extract_value_trgm",
+      "return_type": "internal",
+      "arguments": "text, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gin_extract_query_trgm",
+      "return_type": "internal",
+      "arguments": "text, internal, smallint, internal, internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gin_trgm_consistent",
+      "return_type": "bool",
+      "arguments": "internal, smallint, text, integer, internal, internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gin_trgm_triconsistent",
+      "return_type": "char",
+      "arguments": "internal, smallint, text, integer, internal, internal, internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.strict_word_similarity",
+      "return_type": "float4",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.strict_word_similarity_op",
+      "return_type": "bool",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.strict_word_similarity_commutator_op",
+      "return_type": "bool",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.strict_word_similarity_dist_op",
+      "return_type": "float4",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.strict_word_similarity_dist_commutator_op",
+      "return_type": "float4",
+      "arguments": "text, text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.gtrgm_options",
+      "return_type": "void",
+      "arguments": "internal",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_updated_at",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.refresh_program_day_exercise_variant_key",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.refresh_workout_exercise_variant_key",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    }
+  ],
+  "enums": [
+    {
+      "name": "public.auth_provider",
+      "values": [
+        "apple",
+        "github",
+        "google"
+      ]
+    },
+    {
+      "name": "public.exercise_kind",
+      "values": [
+        "bodyweight_reps",
+        "distance",
+        "duration",
+        "weight_reps"
+      ]
+    },
+    {
+      "name": "public.exercise_status",
+      "values": [
+        "official",
+        "pending_review",
+        "user"
+      ]
+    },
+    {
+      "name": "public.muscle_role",
+      "values": [
+        "primary",
+        "secondary"
+      ]
+    },
+    {
+      "name": "public.set_type",
+      "values": [
+        "drop",
+        "failure",
+        "warmup",
+        "working"
+      ]
+    },
+    {
+      "name": "public.tag_category",
+      "values": [
+        "angle",
+        "equipment",
+        "grip",
+        "other",
+        "stance"
+      ]
+    },
+    {
+      "name": "public.unit_system",
+      "values": [
+        "imperial",
+        "metric"
+      ]
+    },
+    {
+      "name": "public.visibility",
+      "values": [
+        "friends",
+        "private",
+        "public"
+      ]
+    },
+    {
+      "name": "public.workout_source",
+      "values": [
+        "excel_import",
+        "manual"
+      ]
+    }
+  ],
+  "driver": {
+    "name": "postgres",
+    "database_version": "PostgreSQL 18.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit",
+    "meta": {
+      "current_schema": "public",
+      "search_paths": [
+        "postgres",
+        "public"
+      ],
+      "dict": {
+        "Functions": "Stored procedures and functions"
+      }
+    }
+  },
+  "viewpoints": [
+    {
+      "name": "Auth",
+      "desc": "Accounts, linked OAuth identities and sessions.",
+      "tables": [
+        "public.users",
+        "public.auth_identities",
+        "public.refresh_tokens"
+      ]
+    },
+    {
+      "name": "Exercise catalog",
+      "desc": "Canonical exercises, muscles, aliases and stackable variation tags.",
+      "tables": [
+        "public.exercises",
+        "public.exercise_muscles",
+        "public.muscle_groups",
+        "public.exercise_aliases",
+        "public.variation_tags",
+        "public.exercise_variation_tags"
+      ]
+    },
+    {
+      "name": "Workout logging",
+      "desc": "Workouts, their exercises (with stacked tags), sets and gyms.",
+      "tables": [
+        "public.users",
+        "public.workouts",
+        "public.workout_exercises",
+        "public.workout_exercise_tags",
+        "public.sets",
+        "public.exercises",
+        "public.variation_tags",
+        "public.gyms"
+      ]
+    },
+    {
+      "name": "Programs",
+      "desc": "Splits, their days and target exercises, and enrollments.",
+      "tables": [
+        "public.users",
+        "public.programs",
+        "public.program_days",
+        "public.program_day_exercises",
+        "public.program_day_exercise_tags",
+        "public.program_enrollments",
+        "public.exercises",
+        "public.variation_tags"
+      ]
+    },
+    {
+      "name": "Gyms",
+      "desc": "Gym directory and users' saved gyms.",
+      "tables": [
+        "public.gyms",
+        "public.user_gyms",
+        "public.users",
+        "public.workouts"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+name: CI
+
+# Every push to main and every pull request is tested. The metamorph app repository deploys this API to the
+# server by building a pinned commit of this repository (see its deploy/api-ref), so a green main is what ships.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  test:
+    name: Format, vet, tests and acceptance suite
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        # The schema uses uuidv7(), which exists from Postgres 18.
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGPASSWORD: postgres
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Formatting
+        run: test -z "$(gofmt -l cmd internal acceptance migrations)"
+      - run: go vet ./...
+      - run: go test ./internal/... -count=1
+      # Starts the server against a throwaway database and drives it over HTTP.
+      - run: acceptance/run.sh
+
+  build:
+    name: Build the server binary
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      # The same static binary the deploy builds: it needs nothing from the machine that built it.
+      - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o metamorph-api ./cmd/api
+      - uses: actions/upload-artifact@v7
+        with:
+          name: metamorph-api-${{ github.sha }}
+          path: metamorph-api
+          retention-days: 14
