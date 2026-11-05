@@ -41,8 +41,14 @@ jobs:
           go-version-file: go.mod
       - name: Formatting
         run: test -z "$(gofmt -l cmd internal acceptance migrations)"
+      - name: go.mod is tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
       - run: go vet ./...
-      - run: go test ./internal/... -count=1
+      - run: make lint
+      - run: make vuln
+      - run: go test ./internal/... -count=1 -race
       # Starts the server against a throwaway database and drives it over HTTP.
       - run: acceptance/run.sh
 

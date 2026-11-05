@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"slices"
 	"sort"
@@ -16,10 +17,10 @@ import (
 	"github.com/smarniw/metamorphosis/internal/httpx"
 )
 
-func (s *Server) exercisesRoutes(mux *http.ServeMux) {
+func (s *Server) exercisesRoutes(r chi.Router) {
 	h := httpx.Handle
-	mux.HandleFunc("GET /exercises", h(s.authed(s.searchExercises)))
-	mux.HandleFunc("GET /tags", h(s.authed(s.listTags)))
+	r.MethodFunc("GET", "/exercises", h(s.authed(s.searchExercises)))
+	r.MethodFunc("GET", "/tags", h(s.authed(s.listTags)))
 }
 
 type exerciseOut struct {
@@ -77,7 +78,7 @@ func exercisesLimit(w http.ResponseWriter, r *http.Request) (limit int64, ok boo
 
 func exercisesTokens(text string) []string {
 	return strings.FieldsFunc(strings.ToLower(text), func(c rune) bool {
-		return !(unicode.IsLetter(c) || unicode.IsNumber(c))
+		return !unicode.IsLetter(c) && !unicode.IsNumber(c)
 	})
 }
 

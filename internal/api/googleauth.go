@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"math/rand/v2"
 	"net/http"
 	"slices"
@@ -22,14 +23,14 @@ import (
 // POST /auth/google verifies the ID token. A known Google account is logged in; a new one gets a short-lived
 // signup token and nothing is created, because every account needs a username. POST /auth/google/signup then
 // creates the user and the linked identity together.
-func (s *Server) googleRoutes(mux *http.ServeMux) {
+func (s *Server) googleRoutes(r chi.Router) {
 	if s.Google == nil {
 		return
 	}
 	h := httpx.Handle
-	mux.HandleFunc("POST /auth/google", h(s.googleLogin))
-	mux.HandleFunc("POST /auth/google/signup", h(s.googleSignup))
-	mux.HandleFunc("GET /auth/username-available", h(s.usernameAvailable))
+	r.MethodFunc("POST", "/auth/google", h(s.googleLogin))
+	r.MethodFunc("POST", "/auth/google/signup", h(s.googleSignup))
+	r.MethodFunc("GET", "/auth/username-available", h(s.usernameAvailable))
 }
 
 // Handles nobody should be able to claim.
@@ -109,7 +110,7 @@ func (s *Server) suggestUsername(r *http.Request, id google.Identity) (string, e
 	for attempt := 0; attempt < 12; attempt++ {
 		candidate := base
 		if attempt > 0 {
-			candidate = fmt.Sprintf("%s%d", base, 10+rand.IntN(9990))
+			candidate = fmt.Sprintf("%s%d", base, 10+rand.IntN(9990)) //nolint:gosec // a username suffix, not a secret
 		}
 		if checkUsername(candidate) != usernameOK {
 			continue

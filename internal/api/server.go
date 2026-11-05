@@ -6,6 +6,10 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,22 +29,28 @@ type Server struct {
 
 // Handler builds the router. A handler that needs a signed-in user takes it from authed().
 func (s *Server) Handler() http.Handler {
-	mux := http.NewServeMux()
+	r := chi.NewRouter()
+	r.Use(chimw.RequestID, httpx.RequestIDHeader, httpx.AccessLog, httpx.Recoverer, chimw.Timeout(requestTimeout))
+	r.NotFound(httpx.NotFoundHandler)
 	h := httpx.Handle
 
-	mux.HandleFunc("GET /health", h(s.health))
-	s.authRoutes(mux)
-	s.googleRoutes(mux)
-	s.exercisesRoutes(mux)
-	s.gymsRoutes(mux)
-	s.workoutsRoutes(mux)
-	s.statsRoutes(mux)
-	s.bodyweightsRoutes(mux)
+	r.MethodFunc("GET", "/health", h(s.health))
+	s.authRoutes(r)
+	s.googleRoutes(r)
+	s.exercisesRoutes(r)
+	s.gymsRoutes(r)
+	s.workoutsRoutes(r)
+	s.statsRoutes(r)
+	s.bodyweightsRoutes(r)
 	if s.Cfg.DevLogin {
-		mux.HandleFunc("POST /auth/dev-login", h(s.devLogin))
+		r.MethodFunc("POST", "/auth/dev-login", h(s.devLogin))
 	}
-	return s.cors(mux)
+	return s.cors(r)
 }
+
+// requestTimeout bounds how long a request may run: past it the request context is cancelled, so a stuck
+// database call cannot hold a connection forever.
+const requestTimeout = 30 * time.Second
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) error {
 	var one int

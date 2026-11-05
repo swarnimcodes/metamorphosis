@@ -22,6 +22,8 @@ go run ./cmd/api
 | `BIND_ADDR` | default `127.0.0.1:3000` |
 | `ACCESS_TOKEN_TTL_SECS` | default `3600` |
 | `DEV_LOGIN` | `true` mounts `POST /auth/dev-login`; never on a server |
+| `LOG_LEVEL` | `debug`, `info` (default), `warn`, `error`. At `debug` each request logs its route and status, never the URL, a body or a token |
+| `LOG_FORMAT` | `json` for JSON logs; text by default |
 
 ## Database
 
@@ -30,15 +32,24 @@ table (with SHA-384 checksums), because the database was first migrated by the p
 twice, and a migration file that changed after it was applied stops startup. To add one, create
 `migrations/<YYYYMMDDHHMMSS>_<description>.sql`. Docs in `docs/schema` come from `tbls doc --rm-dist`.
 
-## Tests
+## Develop
+
+`make` runs the everyday commands; the tools (golangci-lint, govulncheck) are pinned in `tools.mod` and run through
+`go tool`, so there is nothing to install.
 
 ```sh
-go test ./internal/...      # needs Postgres; TEST_DATABASE_URL defaults to postgres://postgres@localhost/postgres
-acceptance/run.sh           # builds and starts the server on a throwaway database and drives it over HTTP
+make test         # unit tests (need Postgres 18; TEST_DATABASE_URL defaults to postgres://postgres@localhost/postgres)
+make race         # the same with the race detector
+make lint         # golangci-lint
+make vuln         # govulncheck
+make acceptance   # builds and starts the server on a throwaway database and drives it over HTTP
+make compare      # the working tree against what is deployed, byte for byte, on a copy of $SOURCE_DB (default: metamorph)
+make check        # what CI runs
 ```
 
 `acceptance/` is a black-box suite for the API contract the apps depend on (status codes, JSON shapes, error codes).
-See `docs/go-port.md` for how the port from Rust was verified.
+`compare` is the refactoring safety net: it runs the deployed commit and your working tree side by side on one copy
+of a real-shaped database and diffs every read endpoint. See `docs/go-port.md` for how the port from Rust was verified.
 
 ## Deploying
 

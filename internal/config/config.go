@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -22,6 +23,11 @@ type Config struct {
 	// CORSOrigins are the origins allowed to call the API from a browser.
 	CORSOrigins   []string
 	RunMigrations bool
+	// LogLevel is debug, info, warn or error; at debug the server also logs one line per request (route and status,
+	// never the URL, a body or a token).
+	LogLevel slog.Level
+	// LogJSON switches the log format from text to JSON.
+	LogJSON bool
 }
 
 func list(name string) []string {
@@ -63,6 +69,12 @@ func FromEnv() (*Config, error) {
 		}
 		c.AccessTokenTTLSecs = ttl
 	}
+	if v := os.Getenv("LOG_LEVEL"); v != "" {
+		if err := c.LogLevel.UnmarshalText([]byte(v)); err != nil {
+			return nil, fmt.Errorf("LOG_LEVEL must be debug, info, warn or error, got %q", v)
+		}
+	}
+	c.LogJSON = os.Getenv("LOG_FORMAT") == "json"
 	if v := os.Getenv("BIND_ADDR"); v != "" {
 		c.BindAddr = v
 	}

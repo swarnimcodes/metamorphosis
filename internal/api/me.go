@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+	"github.com/go-chi/chi/v5"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -13,12 +15,12 @@ import (
 	"github.com/smarniw/metamorphosis/internal/httpx"
 )
 
-func (s *Server) authRoutes(mux *http.ServeMux) {
+func (s *Server) authRoutes(r chi.Router) {
 	h := httpx.Handle
-	mux.HandleFunc("GET /me", h(s.authed(s.me)))
-	mux.HandleFunc("PATCH /me", h(s.authed(s.updateMe)))
-	mux.HandleFunc("DELETE /me", h(s.authed(s.deleteMe)))
-	mux.HandleFunc("POST /auth/refresh", h(s.refresh))
+	r.MethodFunc("GET", "/me", h(s.authed(s.me)))
+	r.MethodFunc("PATCH", "/me", h(s.authed(s.updateMe)))
+	r.MethodFunc("DELETE", "/me", h(s.authed(s.deleteMe)))
+	r.MethodFunc("POST", "/auth/refresh", h(s.refresh))
 }
 
 type meResponse struct {
@@ -41,7 +43,7 @@ func scanMe(row pgx.Row) (meResponse, error) {
 
 // meOrUnauthorized: a token for a user that no longer exists is simply unauthorized.
 func meOrUnauthorized(m meResponse, err error) (meResponse, error) {
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return m, httpx.Unauthorized()
 	}
 	return m, httpx.FromDB(err)
@@ -127,7 +129,7 @@ func (s *Server) deleteMe(w http.ResponseWriter, r *http.Request, userID uuid.UU
 	var username string
 	err = tx.QueryRow(ctx,
 		`select username::text from users where id = $1 and deleted_at is null for update`, userID).Scan(&username)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return httpx.Unauthorized()
 	}
 	if err != nil {
@@ -187,7 +189,7 @@ func (s *Server) refresh(w http.ResponseWriter, r *http.Request) error {
 	var username string
 	err = s.DB.QueryRow(r.Context(),
 		`select username::text from users where id = $1 and deleted_at is null`, userID).Scan(&username)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return httpx.Unauthorized()
 	}
 	if err != nil {

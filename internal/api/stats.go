@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+	"github.com/go-chi/chi/v5"
 	"math"
 	"net/http"
 	"net/url"
@@ -21,11 +23,11 @@ import (
 //   - Warm-up sets are excluded from every number except that rule.
 //   - Entries logged against exercises that were merged into another count towards the target.
 
-func (s *Server) statsRoutes(mux *http.ServeMux) {
+func (s *Server) statsRoutes(r chi.Router) {
 	h := httpx.Handle
-	mux.HandleFunc("GET /stats/consistency", h(s.authed(s.statsConsistency)))
-	mux.HandleFunc("GET /stats/exercises", h(s.authed(s.statsLoggedExercises)))
-	mux.HandleFunc("GET /stats/exercises/{id}/progress", h(s.authed(s.statsProgress)))
+	r.MethodFunc("GET", "/stats/consistency", h(s.authed(s.statsConsistency)))
+	r.MethodFunc("GET", "/stats/exercises", h(s.authed(s.statsLoggedExercises)))
+	r.MethodFunc("GET", "/stats/exercises/{id}/progress", h(s.authed(s.statsProgress)))
 }
 
 // statsFloat marshals like serde_json does for an f64: a whole number keeps its ".0" (560.0, not 560).
@@ -76,7 +78,7 @@ func statsQuery(r *http.Request, keys ...string) (url.Values, error) {
 func (s *Server) statsTimezoneOf(r *http.Request, userID uuid.UUID) (string, error) {
 	var tz string
 	err := s.DB.QueryRow(r.Context(), `select timezone from users where id = $1 and deleted_at is null`, userID).Scan(&tz)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return "", httpx.Unauthorized()
 	}
 	return tz, httpx.FromDB(err)

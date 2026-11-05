@@ -417,7 +417,7 @@ func TestCORSAllowsOnlyConfiguredOriginsWithoutDevLogin(t *testing.T) {
 	pool := testutil.NewDB(t)
 	h := (&api.Server{DB: pool, Cfg: testConfig("http://localhost:1420"), Google: verifier()}).Handler()
 	preflight := func(origin string) *httptest.ResponseRecorder {
-		req := httptest.NewRequest("OPTIONS", "/auth/google", nil)
+		req := httptest.NewRequest(http.MethodOptions, "/auth/google", nil)
 		req.Header.Set("Origin", origin)
 		req.Header.Set("Access-Control-Request-Method", "POST")
 		req.Header.Set("Access-Control-Request-Headers", "content-type")

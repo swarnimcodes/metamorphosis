@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # The API's dependencies. tools.mod (lint and vulnerability tools) is not covered by Dependabot: bump it by hand
+  # with `go get -modfile=tools.mod -tool <path>@latest`.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go-minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

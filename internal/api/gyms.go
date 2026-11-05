@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strings"
 	"unicode"
@@ -11,10 +12,10 @@ import (
 	"github.com/smarniw/metamorphosis/internal/httpx"
 )
 
-func (s *Server) gymsRoutes(mux *http.ServeMux) {
+func (s *Server) gymsRoutes(r chi.Router) {
 	h := httpx.Handle
-	mux.HandleFunc("GET /gyms", h(s.authed(s.searchGyms)))
-	mux.HandleFunc("POST /gyms", h(s.authed(s.createGym)))
+	r.MethodFunc("GET", "/gyms", h(s.authed(s.searchGyms)))
+	r.MethodFunc("POST", "/gyms", h(s.authed(s.createGym)))
 }
 
 type gymOut struct {

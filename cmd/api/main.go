@@ -30,14 +30,18 @@ func main() {
 
 func run() error {
 	_ = godotenv.Load()
-	// The privacy policy promises the server logs only what matters: there is no request logging, and
-	// handlers never log bodies, emails or tokens.
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
-
 	cfg, err := config.FromEnv()
 	if err != nil {
 		return err
 	}
+	// The privacy policy promises the server logs only what matters: at the default level there is no request
+	// logging, and handlers never log bodies, emails or tokens.
+	logOpts := &slog.HandlerOptions{Level: cfg.LogLevel}
+	var logHandler slog.Handler = slog.NewTextHandler(os.Stderr, logOpts)
+	if cfg.LogJSON {
+		logHandler = slog.NewJSONHandler(os.Stderr, logOpts)
+	}
+	slog.SetDefault(slog.New(logHandler))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

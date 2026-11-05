@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,20 +16,20 @@ import (
 	"github.com/smarniw/metamorphosis/internal/httpx"
 )
 
-func (s *Server) workoutsRoutes(mux *http.ServeMux) {
+func (s *Server) workoutsRoutes(r chi.Router) {
 	h := httpx.Handle
-	mux.HandleFunc("POST /workouts", h(s.authed(s.workoutsCreate)))
-	mux.HandleFunc("GET /workouts", h(s.authed(s.workoutsList)))
-	mux.HandleFunc("GET /workouts/{id}", h(s.authed(s.workoutsDetail)))
-	mux.HandleFunc("PATCH /workouts/{id}", h(s.authed(s.workoutsUpdate)))
-	mux.HandleFunc("DELETE /workouts/{id}", h(s.authed(s.workoutsRemove)))
-	mux.HandleFunc("POST /workouts/{id}/finish", h(s.authed(s.workoutsFinish)))
-	mux.HandleFunc("POST /workouts/{id}/exercises", h(s.authed(s.workoutsAddExercise)))
-	mux.HandleFunc("GET /exercises/{id}/last", h(s.authed(s.workoutsLastPerformance)))
-	mux.HandleFunc("DELETE /workout-exercises/{id}", h(s.authed(s.workoutsRemoveExercise)))
-	mux.HandleFunc("POST /workout-exercises/{id}/sets", h(s.authed(s.workoutsAddSet)))
-	mux.HandleFunc("PATCH /sets/{id}", h(s.authed(s.workoutsUpdateSet)))
-	mux.HandleFunc("DELETE /sets/{id}", h(s.authed(s.workoutsRemoveSet)))
+	r.MethodFunc("POST", "/workouts", h(s.authed(s.workoutsCreate)))
+	r.MethodFunc("GET", "/workouts", h(s.authed(s.workoutsList)))
+	r.MethodFunc("GET", "/workouts/{id}", h(s.authed(s.workoutsDetail)))
+	r.MethodFunc("PATCH", "/workouts/{id}", h(s.authed(s.workoutsUpdate)))
+	r.MethodFunc("DELETE", "/workouts/{id}", h(s.authed(s.workoutsRemove)))
+	r.MethodFunc("POST", "/workouts/{id}/finish", h(s.authed(s.workoutsFinish)))
+	r.MethodFunc("POST", "/workouts/{id}/exercises", h(s.authed(s.workoutsAddExercise)))
+	r.MethodFunc("GET", "/exercises/{id}/last", h(s.authed(s.workoutsLastPerformance)))
+	r.MethodFunc("DELETE", "/workout-exercises/{id}", h(s.authed(s.workoutsRemoveExercise)))
+	r.MethodFunc("POST", "/workout-exercises/{id}/sets", h(s.authed(s.workoutsAddSet)))
+	r.MethodFunc("PATCH", "/sets/{id}", h(s.authed(s.workoutsUpdateSet)))
+	r.MethodFunc("DELETE", "/sets/{id}", h(s.authed(s.workoutsRemoveSet)))
 }
 
 // Every query below filters by the caller's user_id (directly or through the workout), so a valid id belonging
@@ -544,7 +546,7 @@ func (s *Server) workoutsAddExercise(w http.ResponseWriter, r *http.Request, use
 		`select coalesce(merged_into_id, id) from exercises
 		  where id = $1 and deleted_at is null
 		    and (status = 'official' or created_by = $2)`, *body.ExerciseID, userID).Scan(&exerciseID)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return httpx.BadRequest("unknown exercise")
 	}
 	if err != nil {

@@ -94,7 +94,7 @@ func (v *Verifier) fetch(ctx context.Context) (*keySet, error) {
 	if err != nil {
 		return unavailable(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode/100 != 2 {
 		return unavailable(fmt.Errorf("status %d", resp.StatusCode))
 	}

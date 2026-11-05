@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/go-chi/chi/v5"
 	"math"
 	"math/big"
 	"net/http"
@@ -20,11 +21,11 @@ import (
 // own timezone, so there is no timezone conversion here; a day cannot be later than the latest local date
 // anywhere (UTC+14).
 
-func (s *Server) bodyweightsRoutes(mux *http.ServeMux) {
+func (s *Server) bodyweightsRoutes(r chi.Router) {
 	h := httpx.Handle
-	mux.HandleFunc("GET /body-weights", h(s.authed(s.bodyweightList)))
-	mux.HandleFunc("PUT /body-weights/{date}", h(s.authed(s.bodyweightUpsert)))
-	mux.HandleFunc("DELETE /body-weights/{date}", h(s.authed(s.bodyweightRemove)))
+	r.MethodFunc("GET", "/body-weights", h(s.authed(s.bodyweightList)))
+	r.MethodFunc("PUT", "/body-weights/{date}", h(s.authed(s.bodyweightUpsert)))
+	r.MethodFunc("DELETE", "/body-weights/{date}", h(s.authed(s.bodyweightRemove)))
 }
 
 var bodyweightDateRe = regexp.MustCompile(`^([+-]?)([0-9]{4})-([0-9]{2})-([0-9]{2})$`)
