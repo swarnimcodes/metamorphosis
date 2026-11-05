@@ -1,3 +1,4 @@
+-- +goose Up
 -- Places where workouts happen.
 
 create table gyms (

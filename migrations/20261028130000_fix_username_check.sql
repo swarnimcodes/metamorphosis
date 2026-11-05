@@ -1,3 +1,4 @@
+-- +goose Up
 -- On a citext column, ~ matches case-insensitively, so the original check let
 -- "Swarnim_1" through. Cast to text to enforce lowercase-only handles.
 alter table users drop constraint users_username_check;

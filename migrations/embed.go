@@ -3,5 +3,5 @@ package migrations
 
 import "embed"
 
-//go:embed *.sql
+//go:embed *.sql migrations.sum
 var FS embed.FS

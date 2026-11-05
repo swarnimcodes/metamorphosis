@@ -1,3 +1,4 @@
+-- +goose Up
 -- Splits / programs (push-pull-legs etc.) that workouts can be started from.
 
 create table programs (
@@ -58,6 +59,7 @@ create table program_day_exercise_tags (
 );
 create index program_day_exercise_tags_tag_idx on program_day_exercise_tags (tag_id);
 
+-- +goose StatementBegin
 create function refresh_program_day_exercise_variant_key() returns trigger
 language plpgsql as $$
 declare
@@ -73,6 +75,7 @@ begin
     return null;
 end;
 $$;
+-- +goose StatementEnd
 create trigger program_day_exercise_tags_variant_key
     after insert or delete on program_day_exercise_tags
     for each row execute function refresh_program_day_exercise_variant_key();

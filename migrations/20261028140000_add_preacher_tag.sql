@@ -1,3 +1,4 @@
+-- +goose Up
 -- Preacher curls are Bicep Curl + the preacher bench, not a separate exercise.
 insert into variation_tags (slug, name, category) values ('preacher', 'Preacher', 'equipment')
 on conflict (slug) do nothing;

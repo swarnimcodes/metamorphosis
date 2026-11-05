@@ -99,3 +99,29 @@ func NewDB(t testing.TB) *pgxpool.Pool {
 	})
 	return pool
 }
+
+// NewEmptyDB returns a pool on a brand-new database with nothing in it, dropped when the test ends.
+func NewEmptyDB(t testing.TB) *pgxpool.Pool {
+	t.Helper()
+	ctx := context.Background()
+	conn, err := admin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := randomName("metamorph_empty_")
+	if _, err := conn.Exec(ctx, "create database "+name); err != nil {
+		conn.Close(ctx)
+		t.Fatal(err)
+	}
+	pool, err := pgxpool.New(ctx, withDB(adminURL, name))
+	if err != nil {
+		conn.Close(ctx)
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		pool.Close()
+		_, _ = conn.Exec(ctx, "drop database if exists "+name+" with (force)")
+		conn.Close(ctx)
+	})
+	return pool
+}

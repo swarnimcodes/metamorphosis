@@ -1,7 +1,7 @@
 # Everyday commands. Tools (golangci-lint, govulncheck) are pinned in tools.mod and run through `go tool`.
 TOOL = go tool -modfile=tools.mod
 
-.PHONY: run test race lint vuln acceptance compare check tidy
+.PHONY: run test race lint vuln acceptance compare check tidy migration migrations-sum
 
 run:         ## run the API (reads .env)
 	go run ./cmd/api
@@ -23,6 +23,14 @@ acceptance:  ## builds and starts the server on a throwaway database and drives 
 
 compare:     ## the working tree against what is deployed (github/main), byte for byte, on a copy of $$SOURCE_DB
 	acceptance/compare/compare.sh
+
+migration:   ## new migration: make migration name=add_something
+	@test -n "$(name)" || { echo "usage: make migration name=add_something"; exit 1; }
+	$(TOOL) goose -dir migrations create $(name) sql
+	@echo "Edit it, then run: make migrations-sum"
+
+migrations-sum:  ## record the hash of a NEW migration file; never run it to bless an edit to an applied one
+	cd migrations && sha256sum *.sql > migrations.sum
 
 tidy:        ## go.mod must be tidy (tools.mod is maintained by `go get -modfile=tools.mod -tool`)
 	go mod tidy

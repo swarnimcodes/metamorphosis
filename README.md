@@ -27,10 +27,21 @@ go run ./cmd/api
 
 ## Database
 
-`migrations/*.sql` is the schema and is embedded in the binary. Migrations are recorded in sqlx's `_sqlx_migrations`
-table (with SHA-384 checksums), because the database was first migrated by the previous Rust API: nothing is applied
-twice, and a migration file that changed after it was applied stops startup. To add one, create
-`migrations/<YYYYMMDDHHMMSS>_<description>.sql`. Docs in `docs/schema` come from `tbls doc --rm-dist`.
+`migrations/*.sql` is the schema, applied by [goose](https://github.com/pressly/goose) (as a library, embedded in the
+binary) when `RUN_MIGRATIONS=true`. Files are named `<14-digit UTC timestamp>_<description>.sql`; each starts with
+`-- +goose Up`, and a statement with a `$$` body (a function) is wrapped in `-- +goose StatementBegin` / `StatementEnd`.
+
+- **Add one:** `make migration name=add_something`, edit the file, then `make migrations-sum`. Do not use goose's
+  sequential numbering (`-s`) or `goose fix`.
+- **Never edit or delete a migration that has been applied.** goose does not checksum applied files, so
+  `migrations/migrations.sum` does: a unit test fails when a recorded file changes or disappears.
+- **Keep migrations additive** (add columns and tables, do not drop or rename) for as long as rolling back to an older
+  binary matters: an old binary cannot see what a newer one applied.
+- The database was first migrated by the previous Rust API, which recorded versions in sqlx's `_sqlx_migrations` table.
+  On first start the new binary adopts those versions into `goose_db_version` without running anything (see
+  `internal/migrate`), and refuses to start if the two tables disagree. `_sqlx_migrations` is then left alone.
+
+Docs in `docs/schema` come from `tbls doc --rm-dist`.
 
 ## Develop
 

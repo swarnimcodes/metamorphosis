@@ -1,3 +1,4 @@
+-- +goose Up
 -- Users, OAuth identities and API refresh tokens.
 
 create table users (
