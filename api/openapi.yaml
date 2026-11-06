@@ -72,6 +72,60 @@ paths:
   # >>> workouts
   # <<< workouts
   # >>> stats
+  /stats/consistency:
+    get:
+      operationId: getStatsConsistency
+      tags: [stats]
+      summary: Activity per local day over the last weeks weeks, and week streaks over all history.
+      description: |
+        A day is the calendar date in the workout's own time zone (the account's when the workout has none). Only
+        workouts with a logged set count; warm-up sets are left out of sets and volume. The window starts on the
+        Monday `weeks - 1` weeks before this week's Monday and ends today in the account's zone. `weeks` is clamped
+        to 1..104 (default 53).
+      parameters:
+        - { name: weeks, in: query, required: false, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: The calendar.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConsistencyResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /stats/exercises:
+    get:
+      operationId: listStatsExercises
+      tags: [stats]
+      summary: The exercises the user has logged a working set of, one row per variant, most recently performed first.
+      responses:
+        "200":
+          description: Logged exercises.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/StatsLoggedExercise" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /stats/exercises/{id}/progress:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getStatsExerciseProgress
+      tags: [stats]
+      summary: One exercise's history, a point per session, with the records across them.
+      description: |
+        Only official exercises and the caller's own are visible (404 otherwise); a merged exercise resolves to its
+        target. Without `variant_key` every variation is combined; with it (even empty, meaning untagged) exactly
+        that variant. Records go to the earliest session on a tie.
+      parameters:
+        - { name: variant_key, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: The progress.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProgressResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
   # <<< stats
 
 components:
@@ -116,4 +170,96 @@ components:
     # >>> workouts
     # <<< workouts
     # >>> stats
+    ConsistencyDay:
+      type: object
+      required: [date, workouts, sets, volume_kg]
+      properties:
+        date: { type: string, format: date }
+        workouts: { type: integer, format: int64 }
+        sets: { type: integer, format: int64 }
+        volume_kg: { type: number, format: double }
+    ConsistencyTotals:
+      type: object
+      required: [workouts, active_days, sets, volume_kg]
+      properties:
+        workouts: { type: integer, format: int64 }
+        active_days: { type: integer, format: int64 }
+        sets: { type: integer, format: int64 }
+        volume_kg: { type: number, format: double }
+    ConsistencyStreak:
+      type: object
+      required: [current_weeks, longest_weeks]
+      properties:
+        current_weeks: { type: integer, format: int64 }
+        longest_weeks: { type: integer, format: int64 }
+    ConsistencyResponse:
+      type: object
+      required: [timezone, from, to, days, totals, streak]
+      properties:
+        timezone: { type: string }
+        from: { type: string, format: date, description: Monday of the first week shown. }
+        to: { type: string, format: date, description: Today in the account's zone (inclusive). }
+        days: { type: array, items: { $ref: "#/components/schemas/ConsistencyDay" }, description: Only days with a workout, ascending. }
+        totals: { $ref: "#/components/schemas/ConsistencyTotals" }
+        streak: { $ref: "#/components/schemas/ConsistencyStreak" }
+    StatsLoggedExercise:
+      type: object
+      required: [exercise_id, name, kind, variant_key, variant_label, sessions, last_performed]
+      properties:
+        exercise_id: { type: string, format: uuid }
+        name: { type: string }
+        kind: { type: string }
+        variant_key: { type: string, description: Empty means untagged. }
+        variant_label: { type: string }
+        sessions: { type: integer, format: int64 }
+        last_performed: { type: string, format: date }
+    ProgressPoint:
+      type: object
+      description: One session. A figure that does not apply to the exercise's kind is null.
+      required: [date, workout_id, sets, volume_kg, top_weight_kg, best_e1rm_kg, top_reps, total_reps, best_duration_s, total_duration_s, best_distance_m, total_distance_m]
+      properties:
+        date: { type: string, format: date }
+        workout_id: { type: string, format: uuid }
+        sets: { type: integer, format: int64 }
+        volume_kg: { type: number, format: double, nullable: true }
+        top_weight_kg: { type: number, format: double, nullable: true }
+        best_e1rm_kg: { type: number, format: double, nullable: true }
+        top_reps: { type: integer, format: int32, nullable: true }
+        total_reps: { type: integer, format: int64, nullable: true }
+        best_duration_s: { type: integer, format: int32, nullable: true }
+        total_duration_s: { type: integer, format: int64, nullable: true }
+        best_distance_m: { type: number, format: double, nullable: true }
+        total_distance_m: { type: number, format: double, nullable: true }
+    ProgressNumberRecord:
+      type: object
+      required: [value, date]
+      properties:
+        value: { type: number, format: double }
+        date: { type: string, format: date }
+    ProgressCountRecord:
+      type: object
+      required: [value, date]
+      properties:
+        value: { type: integer, format: int32 }
+        date: { type: string, format: date }
+    ProgressRecords:
+      type: object
+      required: [top_weight_kg, best_e1rm_kg, best_volume_kg, top_reps, best_duration_s, best_distance_m]
+      properties:
+        top_weight_kg: { allOf: [{ $ref: "#/components/schemas/ProgressNumberRecord" }], nullable: true }
+        best_e1rm_kg: { allOf: [{ $ref: "#/components/schemas/ProgressNumberRecord" }], nullable: true }
+        best_volume_kg: { allOf: [{ $ref: "#/components/schemas/ProgressNumberRecord" }], nullable: true }
+        top_reps: { allOf: [{ $ref: "#/components/schemas/ProgressCountRecord" }], nullable: true }
+        best_duration_s: { allOf: [{ $ref: "#/components/schemas/ProgressCountRecord" }], nullable: true }
+        best_distance_m: { allOf: [{ $ref: "#/components/schemas/ProgressNumberRecord" }], nullable: true }
+    ProgressResponse:
+      type: object
+      required: [exercise_id, name, kind, variant_key, points, records]
+      properties:
+        exercise_id: { type: string, format: uuid }
+        name: { type: string }
+        kind: { type: string }
+        variant_key: { type: string, nullable: true, description: Null when every variant is combined, else the key echoed back. }
+        points: { type: array, items: { $ref: "#/components/schemas/ProgressPoint" } }
+        records: { $ref: "#/components/schemas/ProgressRecords" }
     # <<< stats
