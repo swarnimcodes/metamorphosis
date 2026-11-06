@@ -66,8 +66,86 @@ paths:
   # >>> account
   # <<< account
   # >>> gyms
+  /gyms:
+    get:
+      operationId: searchGyms
+      tags: [gyms]
+      summary: Search the shared gym directory.
+      description: |
+        Matches when every word of `q` appears in the name, area or city (apostrophes and punctuation ignored), or
+        the name is similar enough. Better matches come first, then gyms the caller trained at most recently, then
+        verified ones, then by name. No `q` lists the directory in that last-used order. `limit` defaults to 20 and
+        is clamped to 1..50.
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: limit, in: query, required: false, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: Gyms.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Gym" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createGym
+      tags: [gyms]
+      summary: Adds a gym to the shared directory.
+      description: |
+        Strings are trimmed and a blank optional one is stored as null. `maps_url` must be an https link to Google
+        Maps, Apple Maps or OpenStreetMap. Unless `force` is true, a gym with a similar name in the same city (any
+        city when none is given) is refused with 409 and the candidates in `similar`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GymCreate" }
+      responses:
+        "201":
+          description: The new gym.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Gym" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          description: Similar gyms exist already (at most 10 are listed).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GymSimilarConflict" }
   # <<< gyms
   # >>> exercises
+  /exercises:
+    get:
+      operationId: searchExercises
+      tags: [exercises]
+      summary: Search the exercise catalog by name or alias.
+      description: |
+        Official exercises and the caller's own. When the query names variation tags ("preacher curl") they are
+        taken out of the search and returned in `suggested_tag_ids`. `limit` defaults to 20 and is clamped to 1..50.
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: limit, in: query, required: false, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: Exercises, best match first.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Exercise" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /tags:
+    get:
+      operationId: listTags
+      tags: [exercises]
+      summary: Every variation tag, by category then name.
+      responses:
+        "200":
+          description: Tags.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Tag" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
   # <<< exercises
   # >>> workouts
   # <<< workouts
@@ -110,8 +188,60 @@ components:
     # >>> account
     # <<< account
     # >>> gyms
+    Gym:
+      type: object
+      required: [id, name, chain, area, address, city, lat, lng, maps_url, verified]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        chain: { type: string, nullable: true }
+        area: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        lat: { type: number, format: double, nullable: true }
+        lng: { type: number, format: double, nullable: true }
+        maps_url: { type: string, nullable: true }
+        verified: { type: boolean }
+    GymCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        chain: { type: string }
+        area: { type: string }
+        address: { type: string }
+        city: { type: string }
+        maps_url: { type: string }
+        force: { type: boolean, description: Create even if a similar gym exists. }
+    GymSimilarConflict:
+      type: object
+      required: [error, similar]
+      properties:
+        error: { type: string }
+        similar: { type: array, items: { $ref: "#/components/schemas/Gym" } }
     # <<< gyms
     # >>> exercises
+    Exercise:
+      type: object
+      required: [id, slug, name, kind, status, suggested_tag_ids]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string, nullable: true }
+        name: { type: string }
+        kind: { type: string, description: "weight_reps, bodyweight_reps, duration or distance." }
+        status: { type: string, description: "official or user." }
+        suggested_tag_ids:
+          type: array
+          description: Variation tags the search query asked for (e.g. "preacher curl" suggests `preacher`).
+          items: { type: string, format: uuid }
+    Tag:
+      type: object
+      required: [id, slug, name, category]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        category: { type: string, description: "equipment, grip, angle, stance or other." }
     # <<< exercises
     # >>> workouts
     # <<< workouts
