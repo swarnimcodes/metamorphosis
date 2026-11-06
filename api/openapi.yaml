@@ -64,6 +64,138 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
   # <<< bodyweights
   # >>> account
+  /me:
+    get:
+      operationId: getMe
+      tags: [account]
+      summary: The signed-in user's profile.
+      responses:
+        "200":
+          description: The profile.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    patch:
+      operationId: updateMe
+      tags: [account]
+      summary: Changes the display name, unit system or time zone. Absent or null fields are left as they are.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/MeUpdate" } } }
+      responses:
+        "200":
+          description: The profile after the change.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      operationId: deleteMe
+      tags: [account]
+      summary: Permanently deletes the account and everything it owns.
+      description: |
+        `confirm_username` must match the account's username (ignoring case and surrounding space), otherwise the
+        answer is 400 with code `username_mismatch` and nothing is deleted.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/MeDelete" } } }
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /auth/refresh:
+    post:
+      operationId: refreshSession
+      tags: [auth]
+      security: []
+      summary: Exchanges a refresh token for a new session (the old refresh token stops working).
+      parameters:
+        - { name: User-Agent, in: header, required: false, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AuthRefreshRequest" } } }
+      responses:
+        "200":
+          description: The new session.
+          content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /auth/dev-login:
+    post:
+      operationId: devLogin
+      tags: [auth]
+      security: []
+      summary: Development sign-in that creates the user on first use. Answers 404 unless DEV_LOGIN is on.
+      parameters:
+        - { name: User-Agent, in: header, required: false, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AuthDevLoginRequest" } } }
+      responses:
+        "200":
+          description: The session.
+          content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /auth/google:
+    post:
+      operationId: googleSignIn
+      tags: [auth]
+      security: []
+      summary: Signs in with a Google ID token, or offers a signup if the Google account is new. Answers 404 unless Google sign-in is configured.
+      parameters:
+        - { name: User-Agent, in: header, required: false, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/GoogleSignInRequest" } } }
+      responses:
+        "200":
+          description: A session (`signup_required` false) or a signup offer (`signup_required` true).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/GoogleLoggedIn"
+                  - $ref: "#/components/schemas/GoogleSignupRequired"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "502":
+          description: Google's signing keys could not be fetched.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  /auth/google/signup:
+    post:
+      operationId: googleSignup
+      tags: [auth]
+      security: []
+      summary: Creates the account for a verified Google identity, with the chosen username. Answers 404 unless Google sign-in is configured.
+      parameters:
+        - { name: User-Agent, in: header, required: false, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/GoogleSignupRequest" } } }
+      responses:
+        "200":
+          description: The session.
+          content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The username or email is taken, or the Google account is already registered (codes `username_taken`, `email_in_use`, `identity_exists`).
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  /auth/username-available:
+    get:
+      operationId: usernameAvailable
+      tags: [auth]
+      security: []
+      summary: Whether a username can be chosen at signup. Answers 404 unless Google sign-in is configured.
+      parameters:
+        - { name: username, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Availability.
+          content: { application/json: { schema: { $ref: "#/components/schemas/UsernameAvailability" } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
   # <<< account
   # >>> gyms
   # <<< gyms
@@ -108,6 +240,86 @@ components:
         weight_kg: { type: number, format: double }
     # <<< bodyweights
     # >>> account
+    Me:
+      type: object
+      required: [id, username, display_name, email, avatar_url, unit_system, timezone]
+      properties:
+        id: { x-order: 1, type: string, format: uuid }
+        username: { x-order: 2, type: string }
+        display_name: { x-order: 3, type: string }
+        email: { x-order: 4, type: string }
+        avatar_url: { x-order: 5, type: string, nullable: true }
+        unit_system: { x-order: 6, type: string, description: "`metric` or `imperial`." }
+        timezone: { x-order: 7, type: string, description: An IANA zone name. }
+    MeUpdate:
+      type: object
+      description: Every field is optional; null or absent leaves it unchanged.
+      properties:
+        display_name: { type: string, nullable: true, description: 1-80 characters after trimming. }
+        unit_system: { type: string, nullable: true, description: "`metric` or `imperial`." }
+        timezone: { type: string, nullable: true, description: A zone name the database knows. }
+    MeDelete:
+      type: object
+      properties:
+        confirm_username: { type: string, nullable: true, description: Required; the account's username. }
+    AuthRefreshRequest:
+      type: object
+      properties:
+        refresh_token: { type: string, nullable: true, description: Required. }
+    AuthDevLoginRequest:
+      type: object
+      properties:
+        username: { type: string, nullable: true, description: Required; trimmed and lowercased. }
+        display_name: { type: string, nullable: true, description: Used only when the user is created. }
+    LoginResponse:
+      type: object
+      required: [access_token, token_type, expires_in, refresh_token, refresh_expires_in, user_id, username]
+      properties:
+        access_token: { x-order: 1, type: string }
+        token_type: { x-order: 2, type: string }
+        expires_in: { x-order: 3, type: integer, format: int64 }
+        refresh_token: { x-order: 4, type: string }
+        refresh_expires_in: { x-order: 5, type: integer, format: int64 }
+        user_id: { x-order: 6, type: string, format: uuid }
+        username: { x-order: 7, type: string }
+    GoogleSignInRequest:
+      type: object
+      properties:
+        id_token: { type: string, nullable: true, description: Required. }
+    GoogleLoggedIn:
+      type: object
+      required: [signup_required, access_token, token_type, expires_in, refresh_token, refresh_expires_in, user_id, username]
+      properties:
+        signup_required: { x-order: 1, type: boolean, description: Always false. }
+        access_token: { x-order: 2, type: string }
+        token_type: { x-order: 3, type: string }
+        expires_in: { x-order: 4, type: integer, format: int64 }
+        refresh_token: { x-order: 5, type: string }
+        refresh_expires_in: { x-order: 6, type: integer, format: int64 }
+        user_id: { x-order: 7, type: string, format: uuid }
+        username: { x-order: 8, type: string }
+    GoogleSignupRequired:
+      type: object
+      required: [signup_required, signup_token, suggested_username, display_name, email, avatar_url]
+      properties:
+        signup_required: { type: boolean, description: Always true. }
+        signup_token: { type: string }
+        suggested_username: { type: string }
+        display_name: { type: string }
+        email: { type: string }
+        avatar_url: { type: string, nullable: true }
+    GoogleSignupRequest:
+      type: object
+      properties:
+        signup_token: { type: string, nullable: true, description: Required. }
+        username: { type: string, nullable: true, description: Required. }
+        display_name: { type: string, nullable: true }
+    UsernameAvailability:
+      type: object
+      required: [available]
+      properties:
+        available: { type: boolean }
+        reason: { type: string, description: "Present when unavailable: `invalid`, `reserved` or `taken`." }
     # <<< account
     # >>> gyms
     # <<< gyms

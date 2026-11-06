@@ -24,7 +24,14 @@ func userFrom(ctx context.Context) uuid.UUID {
 // publicRoutes are the only operations that need no access token ("METHOD /path"). Everything else is refused with
 // 401 before the request is even parsed, so a malformed request cannot tell an anonymous caller more than a
 // well-formed one can.
-var publicRoutes = map[string]bool{}
+var publicRoutes = map[string]bool{
+	// account
+	"POST /auth/refresh":           true,
+	"POST /auth/dev-login":         true,
+	"POST /auth/google":            true,
+	"POST /auth/google/signup":     true,
+	"GET /auth/username-available": true,
+}
 
 // authenticate puts the signed-in user in the request context. A token for an account that no longer exists is
 // refused at once, not when it expires.
