@@ -9,7 +9,9 @@ ref="${1:-github/main}"
 src="${SOURCE_DB:-metamorph}"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export PGUSER="${PGUSER:-postgres}" PGHOST="${PGHOST:-localhost}"
-db="metamorph_compare"
+# COMPARE_NAME and COMPARE_PORT let several comparisons run side by side (separate worktrees).
+db="metamorph_compare${COMPARE_NAME:+_$COMPARE_NAME}"
+port="${COMPARE_PORT:-3711}"
 base="${CLAUDE_JOB_DIR:+$CLAUDE_JOB_DIR/tmp}"; base="${base:-${TMPDIR:-/var/tmp}}"
 tmp="$(mktemp -d "$base/compare.XXXXXX")"
 pids=()
@@ -32,7 +34,7 @@ run() { # name, binary, port
      DEV_LOGIN=true BIND_ADDR="127.0.0.1:$3" "$2") >"$tmp/$1.log" 2>&1 &
   pids+=($!)
 }
-run old "$tmp/old-api" 3711; run new "$tmp/new-api" 3712
-for port in 3711 3712; do for _ in $(seq 50); do curl -fsS "http://127.0.0.1:$port/health" >/dev/null 2>&1 && break; sleep 0.2; done; done
+run old "$tmp/old-api" "$port"; run new "$tmp/new-api" "$((port + 1))"
+for p in "$port" "$((port + 1))"; do for _ in $(seq 50); do curl -fsS "http://127.0.0.1:$p/health" >/dev/null 2>&1 && break; sleep 0.2; done; done
 echo "==> comparing"
-python3 -I "$root/acceptance/compare/compare.py" http://127.0.0.1:3711 http://127.0.0.1:3712 "$user"
+python3 -I "$root/acceptance/compare/compare.py" "http://127.0.0.1:$port" "http://127.0.0.1:$((port + 1))" "$user"

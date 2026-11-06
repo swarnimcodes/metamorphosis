@@ -89,6 +89,9 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 	}
 }
 
+// RenderError writes err as the API's error body. A non-*Error is an internal fault.
+func RenderError(w http.ResponseWriter, err error) { writeError(w, err) }
+
 func writeError(w http.ResponseWriter, err error) {
 	var e *Error
 	if !errors.As(err, &e) {

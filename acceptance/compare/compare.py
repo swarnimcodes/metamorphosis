@@ -12,7 +12,13 @@ def call(base, method, path, token=None, body=None):
 t = json.loads(call(R,"POST","/auth/dev-login",None,{"username":UNAME})[1])["access_token"]
 for d,w in [("2026-10-01",86.4),("2026-10-15",85.95),("2026-11-02",85.4)]:
     call(R,"PUT","/body-weights/"+d,t,{"weight_kg":w})
-strict = lambda b: json.loads(b, parse_float=lambda x:("F",x), parse_int=lambda x:("I",x)) if b else None
+import os
+from decimal import Decimal
+if os.environ.get("COMPARE_NUMBERS") == "value":   # 90 and 90.0 are the same number
+    num = lambda x: ("N", str(Decimal(x).normalize()))
+    strict = lambda b: json.loads(b, parse_float=num, parse_int=num) if b else None
+else:                                               # the literal text must match too
+    strict = lambda b: json.loads(b, parse_float=lambda x:("F",x), parse_int=lambda x:("I",x)) if b else None
 paths = ["/me","/tags","/gyms","/gyms?q=cult","/exercises?q=bench","/exercises?q=incline%20db","/exercises?q=squat&limit=5",
          "/workouts","/workouts?limit=5","/stats/consistency","/stats/consistency?weeks=4","/stats/consistency?weeks=104",
          "/stats/exercises","/body-weights"]

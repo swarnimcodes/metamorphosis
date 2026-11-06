@@ -45,6 +45,10 @@ jobs:
         run: |
           go mod tidy
           git diff --exit-code go.mod go.sum
+      - name: Generated code is up to date
+        run: |
+          make generate
+          git diff --exit-code
       - run: go vet ./...
       - run: make lint
       - run: make vuln

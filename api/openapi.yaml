@@ -1,0 +1,119 @@
+openapi: 3.0.3
+info:
+  title: Metamorph API
+  version: "1"
+  description: |
+    The contract the web and Android apps depend on. Servers and the apps' TypeScript types are generated from this
+    file (`make generate`). Request bodies are decoded leniently on purpose: a field the server does not know is
+    ignored, and where a field is optional, `null` means "leave it as it is" unless the field is documented as clearable.
+security:
+  - bearerAuth: []
+
+paths:
+  # --- feature paths: each feature adds its operations in its own block, between these markers ---
+  # >>> bodyweights
+  /body-weights:
+    get:
+      operationId: listBodyWeights
+      tags: [body-weights]
+      summary: The signed-in user's weigh-ins, oldest first (at most 5000, the newest kept).
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Weigh-ins.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/BodyWeightEntry" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /body-weights/{date}:
+    parameters:
+      - { name: date, in: path, required: true, schema: { type: string, format: date } }
+    put:
+      operationId: setBodyWeight
+      tags: [body-weights]
+      summary: Records (or replaces) the weigh-in for a local calendar day.
+      description: |
+        One entry per user per day. The date is the person's own local date, so it may be as far ahead as UTC+14 but
+        no further. The weight is rounded half-to-even to two decimals and must be above 0 and below 500.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [weight_kg]
+              properties:
+                weight_kg: { type: number, format: double }
+      responses:
+        "200":
+          description: The stored entry.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BodyWeightEntry" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      operationId: deleteBodyWeight
+      tags: [body-weights]
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  # <<< bodyweights
+  # >>> account
+  # <<< account
+  # >>> gyms
+  # <<< gyms
+  # >>> exercises
+  # <<< exercises
+  # >>> workouts
+  # <<< workouts
+  # >>> stats
+  # <<< stats
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+
+  responses:
+    BadRequest:
+      description: The request is invalid.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: Missing, invalid or expired access token, or the account no longer exists.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: No such record (or it belongs to someone else).
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        code:
+          type: string
+          description: A stable value a client can branch on, present only where the API documents one.
+    # --- feature schemas: each feature adds its schemas in its own block ---
+    # >>> bodyweights
+    BodyWeightEntry:
+      type: object
+      required: [date, weight_kg]
+      properties:
+        date: { type: string, format: date }
+        weight_kg: { type: number, format: double }
+    # <<< bodyweights
+    # >>> account
+    # <<< account
+    # >>> gyms
+    # <<< gyms
+    # >>> exercises
+    # <<< exercises
+    # >>> workouts
+    # <<< workouts
+    # >>> stats
+    # <<< stats

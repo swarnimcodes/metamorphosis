@@ -9,10 +9,12 @@
 set -euo pipefail
 
 impl=go
-port=3101
+# ACCEPT_PORT and ACCEPT_NAME let several runs go side by side (separate worktrees): own port, own database.
+port="${ACCEPT_PORT:-3101}"
+name="${ACCEPT_NAME:-go}"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-db="metamorph_accept_${impl}"
+db="metamorph_accept_${name}"
 pg=(psql -X -q -U postgres -h localhost -d postgres -v ON_ERROR_STOP=1)
 # PGPASSWORD (used by psql here and by the suite) is also put into the server's URL when set, as CI needs.
 db_url="postgres://postgres${PGPASSWORD:+:${PGPASSWORD}}@localhost/${db}"

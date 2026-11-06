@@ -1,7 +1,7 @@
 # Everyday commands. Tools (golangci-lint, govulncheck) are pinned in tools.mod and run through `go tool`.
 TOOL = go tool -modfile=tools.mod
 
-.PHONY: run test race lint vuln acceptance compare check tidy migration migrations-sum
+.PHONY: run test race lint vuln acceptance compare check tidy migration migrations-sum generate
 
 run:         ## run the API (reads .env)
 	go run ./cmd/api
@@ -21,8 +21,12 @@ vuln:        ## known vulnerabilities in the dependencies the code actually call
 acceptance:  ## builds and starts the server on a throwaway database and drives it over HTTP
 	acceptance/run.sh
 
-compare:     ## the working tree against what is deployed (github/main), byte for byte, on a copy of $$SOURCE_DB
+compare:     ## the working tree against what is deployed (github/main), byte for byte, on a copy of $$SOURCE_DB (COMPARE_NUMBERS=value ignores number formatting, 90 vs 90.0)
 	acceptance/compare/compare.sh
+
+generate:    ## sqlc (queries/ -> internal/db) and oapi-codegen (api/openapi.yaml -> internal/httpapi/gen); commit the output
+	$(TOOL) sqlc generate
+	$(TOOL) oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
 
 migration:   ## new migration: make migration name=add_something
 	@test -n "$(name)" || { echo "usage: make migration name=add_something"; exit 1; }

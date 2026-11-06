@@ -17,6 +17,7 @@ import (
 	"github.com/smarniw/metamorphosis/internal/auth"
 	"github.com/smarniw/metamorphosis/internal/config"
 	"github.com/smarniw/metamorphosis/internal/google"
+	"github.com/smarniw/metamorphosis/internal/httpapi"
 	"github.com/smarniw/metamorphosis/internal/httpx"
 )
 
@@ -41,10 +42,12 @@ func (s *Server) Handler() http.Handler {
 	s.gymsRoutes(r)
 	s.workoutsRoutes(r)
 	s.statsRoutes(r)
-	s.bodyweightsRoutes(r)
 	if s.Cfg.DevLogin {
 		r.MethodFunc("POST", "/auth/dev-login", h(s.devLogin))
 	}
+	// Registered last on purpose: an operation present in api/openapi.yaml replaces the legacy handler for the same
+	// route, so features move over one at a time and the legacy file is deleted once its replacement passes.
+	httpapi.Register(r, httpapi.Deps{DB: s.DB, Cfg: s.Cfg, Google: s.Google})
 	return s.cors(r)
 }
 
