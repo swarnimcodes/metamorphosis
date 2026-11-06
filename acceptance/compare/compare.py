@@ -37,12 +37,13 @@ def leaves(a,b,path,out):
         if len(a)!=len(b): out[(path,"list length")] += 1; return
         for x,y in zip(a,b): leaves(x,y,path+"[]",out)
     elif a!=b: out[(path, "number format" if isinstance(a,tuple) else "value")] += 1
-n = same = 0; out = collections.Counter(); status = []
+n = same = reordered = 0; out = collections.Counter(); status = []
 for p in paths:
     (rs,rb),(gs,gb) = call(R,"GET",p,t), call(G,"GET",p,t); n += 1
     if rs != gs: status.append((p,rs,gs)); continue
     if rb.rstrip(b"\n") == gb.rstrip(b"\n"): same += 1; continue
+    if strict(rb) == strict(gb): reordered += 1; continue   # only the order of keys differs: nothing reads it
     leaves(strict(rb), strict(gb), "", out)
-print(f"requests: {n}  byte-identical: {same}  differing: {n-same}  status mismatches: {len(status)}")
+print(f"requests: {n}  byte-identical: {same}  same but key order: {reordered}  differing: {n-same-reordered}  status mismatches: {len(status)}")
 for (path,kind),c in out.most_common(12): print(f"  {c:4d}  {kind:14s} {path}")
 for s in status[:5]: print("  STATUS", s)
