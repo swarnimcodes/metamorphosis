@@ -280,6 +280,209 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
   # <<< exercises
   # >>> workouts
+  /workouts:
+    post:
+      operationId: createWorkout
+      tags: [workouts]
+      summary: Starts a workout.
+      description: |
+        With no `gym_id` the workout starts at the gym of the caller's most recent workout that has a gym. `timezone`
+        is the device's IANA zone; without it the account's zone is recorded. `started_at` defaults to now.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkoutCreate" }
+      responses:
+        "201":
+          description: The new workout.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workout" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    get:
+      operationId: listWorkouts
+      tags: [workouts]
+      summary: The caller's workouts, newest first.
+      description: "`limit` is clamped to 1..100 (default 20); `before` is exclusive."
+      parameters:
+        - { name: limit, in: query, required: false, schema: { type: integer, format: int64 } }
+        - { name: before, in: query, required: false, schema: { type: string, format: date-time } }
+      responses:
+        "200":
+          description: Workout summaries.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/WorkoutSummary" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /workouts/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getWorkout
+      tags: [workouts]
+      responses:
+        "200":
+          description: The workout with its exercises, tags and sets.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workout" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      operationId: updateWorkout
+      tags: [workouts]
+      summary: Omitted or null fields are left unchanged; a field cannot be cleared.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkoutUpdate" }
+      responses:
+        "200":
+          description: The updated workout.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workout" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteWorkout
+      tags: [workouts]
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /workouts/{id}/finish:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: finishWorkout
+      tags: [workouts]
+      summary: Ends the workout now. Finishing twice keeps the first end time.
+      description: The body is optional and ignored.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200":
+          description: The workout.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workout" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /workouts/{id}/exercises:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: addWorkoutExercise
+      tags: [workouts]
+      summary: Adds an exercise (with its variation tags) at the next position.
+      description: A merged exercise is replaced by the one it was merged into.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkoutExerciseCreate" }
+      responses:
+        "201":
+          description: The new workout exercise.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkoutExercise" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /exercises/{id}/last:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getLastSession
+      tags: [workouts]
+      summary: The caller's sets from their most recent session of an exercise with this exact variant.
+      description: A merged exercise resolves to its target, and entries logged against merged-away duplicates count.
+      parameters:
+        - { name: variant_key, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: The last session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkoutLastSession" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /workout-exercises/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      operationId: deleteWorkoutExercise
+      tags: [workouts]
+      summary: Removes the exercise and its sets.
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /workout-exercises/{id}/sets:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: addSet
+      tags: [workouts]
+      summary: Adds a set at the next position; `completed_at` defaults to now.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkoutSetCreate" }
+      responses:
+        "201":
+          description: The new set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkoutSet" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /sets/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: updateSet
+      tags: [workouts]
+      summary: Omitted fields are unchanged; `null` is unchanged too, except for `rir`, which `null` clears.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkoutSetUpdate" }
+      responses:
+        "200":
+          description: The updated set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkoutSet" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteSet
+      tags: [workouts]
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
   # <<< workouts
   # >>> stats
   # <<< stats
@@ -456,6 +659,147 @@ components:
         category: { type: string, description: "equipment, grip, angle, stance or other." }
     # <<< exercises
     # >>> workouts
+    WorkoutTag:
+      type: object
+      required: [id, slug, name, category]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        category: { type: string }
+    WorkoutGymRef:
+      type: object
+      description: The gym a workout was logged at (a soft-deleted gym keeps its name in history).
+      required: [id, name, area, city, lat, lng, maps_url]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        area: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        lat: { type: number, format: double, nullable: true }
+        lng: { type: number, format: double, nullable: true }
+        maps_url: { type: string, nullable: true }
+    WorkoutSet:
+      type: object
+      required: [id, position, set_type, weight_kg, reps, duration_s, distance_m, rir, note, completed_at]
+      properties:
+        id: { type: string, format: uuid }
+        position: { type: integer, format: int32 }
+        set_type: { $ref: "#/components/schemas/WorkoutSetType" }
+        weight_kg: { type: number, format: double, nullable: true }
+        reps: { type: integer, format: int32, nullable: true }
+        duration_s: { type: integer, format: int32, nullable: true }
+        distance_m: { type: number, format: double, nullable: true }
+        rir: { type: integer, format: int16, nullable: true, description: "Reps in reserve, 0 to 5 (5 = five or more)." }
+        note: { type: string, nullable: true }
+        completed_at: { type: string, format: date-time, nullable: true }
+    WorkoutSetType:
+      type: string
+      enum: [working, warmup, drop, failure]
+    WorkoutExercise:
+      type: object
+      required: [id, exercise_id, exercise_name, kind, position, variant_key, superset_group, notes, tags, sets]
+      properties:
+        id: { type: string, format: uuid }
+        exercise_id: { type: string, format: uuid }
+        exercise_name: { type: string }
+        kind: { type: string }
+        position: { type: integer, format: int32 }
+        variant_key: { type: string, description: 'Sorted tag slugs joined by "+"; empty when untagged.' }
+        superset_group: { type: integer, format: int32, nullable: true }
+        notes: { type: string, nullable: true }
+        tags: { type: array, items: { $ref: "#/components/schemas/WorkoutTag" } }
+        sets: { type: array, items: { $ref: "#/components/schemas/WorkoutSet" } }
+    Workout:
+      type: object
+      required: [id, title, gym_id, gym, started_at, ended_at, timezone, notes, exercises]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, nullable: true }
+        gym_id: { type: string, format: uuid, nullable: true }
+        gym:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/WorkoutGymRef" }]
+        started_at: { type: string, format: date-time }
+        ended_at: { type: string, format: date-time, nullable: true }
+        timezone: { type: string, description: The IANA zone the workout happened in. }
+        notes: { type: string, nullable: true }
+        exercises: { type: array, items: { $ref: "#/components/schemas/WorkoutExercise" } }
+    WorkoutSummary:
+      type: object
+      required: [id, title, gym_id, gym, started_at, ended_at, timezone, exercise_count, set_count]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, nullable: true }
+        gym_id: { type: string, format: uuid, nullable: true }
+        gym:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/WorkoutGymRef" }]
+        started_at: { type: string, format: date-time }
+        ended_at: { type: string, format: date-time, nullable: true }
+        timezone: { type: string }
+        exercise_count: { type: integer, format: int64 }
+        set_count: { type: integer, format: int64 }
+    WorkoutLastSession:
+      type: object
+      required: [workout_id, started_at, sets]
+      properties:
+        workout_id: { type: string, format: uuid }
+        started_at: { type: string, format: date-time }
+        sets: { type: array, items: { $ref: "#/components/schemas/WorkoutSet" } }
+    WorkoutCreate:
+      type: object
+      properties:
+        title: { type: string }
+        gym_id: { type: string, format: uuid }
+        notes: { type: string }
+        started_at: { type: string, format: date-time }
+        timezone: { type: string, description: An IANA zone the database knows. }
+    WorkoutUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        notes: { type: string }
+        gym_id: { type: string, format: uuid }
+        started_at: { type: string, format: date-time }
+        ended_at: { type: string, format: date-time }
+    WorkoutExerciseCreate:
+      type: object
+      description: "`exercise_id` is required (the service answers 400 when it is missing)."
+      properties:
+        exercise_id: { type: string, format: uuid }
+        tag_ids: { type: array, items: { type: string, format: uuid } }
+        superset_group: { type: integer, format: int32 }
+        notes: { type: string }
+    WorkoutSetCreate:
+      type: object
+      properties:
+        set_type: { $ref: "#/components/schemas/WorkoutSetType" }
+        weight_kg: { type: number, format: double }
+        reps: { type: integer, format: int32 }
+        duration_s: { type: integer, format: int32 }
+        distance_m: { type: number, format: double }
+        rir: { type: integer, format: int16, description: "0 to 5." }
+        note: { type: string }
+        completed_at: { type: string, format: date-time }
+    WorkoutSetUpdate:
+      type: object
+      properties:
+        set_type: { $ref: "#/components/schemas/WorkoutSetType" }
+        weight_kg: { type: number, format: double }
+        reps: { type: integer, format: int32 }
+        duration_s: { type: integer, format: int32 }
+        distance_m: { type: number, format: double }
+        rir:
+          type: integer
+          format: int16
+          nullable: true
+          description: "0 to 5. Omitted leaves it unchanged; an explicit null clears it."
+          x-go-type: nullable.Nullable[int16]
+          x-go-type-import: { path: github.com/oapi-codegen/nullable }
+          x-go-type-skip-optional-pointer: true
+        note: { type: string }
+        completed_at: { type: string, format: date-time }
     # <<< workouts
     # >>> stats
     # <<< stats
