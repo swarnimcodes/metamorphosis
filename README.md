@@ -43,6 +43,15 @@ binary) when `RUN_MIGRATIONS=true`. Files are named `<14-digit UTC timestamp>_<d
 
 Docs in `docs/schema` come from `tbls doc --rm-dist`.
 
+## Layout
+
+`api/openapi.yaml` is the contract; `queries/*.sql` holds every SQL statement. `make generate` turns them into
+`internal/httpapi/gen` (oapi-codegen: router, strict server, wire types) and `internal/db` (sqlc). Each feature is a
+service package (`internal/account`, `gym`, `exercise`, `workout`, `stats`, `bodyweight`: business rules, no HTTP) plus
+a handler file in `internal/httpapi` that only converts between wire types and service calls.
+`docs/architecture.md` has the rules and how to add an operation. `make ts-types OUT=...` generates the app's
+TypeScript types from the spec.
+
 ## Develop
 
 `make` runs the everyday commands; the tools (golangci-lint, govulncheck) are pinned in `tools.mod` and run through

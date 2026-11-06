@@ -1,4 +1,4 @@
-package api_test
+package httpapi_test
 
 import (
 	"net/http"
@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smarniw/metamorphosis/internal/api"
 	"github.com/smarniw/metamorphosis/internal/config"
+	"github.com/smarniw/metamorphosis/internal/httpapi"
 	"github.com/smarniw/metamorphosis/internal/testutil"
 )
 
@@ -16,7 +16,7 @@ import (
 
 func routerHandler(t *testing.T, cfg *config.Config) http.Handler {
 	t.Helper()
-	return (&api.Server{DB: testutil.NewDB(t), Cfg: cfg}).Handler()
+	return httpapi.NewHandler(httpapi.Deps{DB: testutil.NewDB(t), Cfg: cfg})
 }
 
 func serve(h http.Handler, method, path, origin string, extra map[string]string) *httptest.ResponseRecorder {

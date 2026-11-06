@@ -1,7 +1,7 @@
 # Everyday commands. Tools (golangci-lint, govulncheck) are pinned in tools.mod and run through `go tool`.
 TOOL = go tool -modfile=tools.mod
 
-.PHONY: run test race lint vuln acceptance compare check tidy migration migrations-sum generate
+.PHONY: run test race lint vuln acceptance compare check tidy migration migrations-sum generate ts-types
 
 run:         ## run the API (reads .env)
 	go run ./cmd/api
@@ -27,6 +27,10 @@ compare:     ## the working tree against what is deployed (github/main), byte fo
 generate:    ## sqlc (queries/ -> internal/db) and oapi-codegen (api/openapi.yaml -> internal/httpapi/gen); commit the output
 	$(TOOL) sqlc generate
 	$(TOOL) oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
+
+ts-types:    ## TypeScript types for the app from the spec: make ts-types OUT=../metamorph/app/src/api/schema.d.ts
+	@test -n "$(OUT)" || { echo "usage: make ts-types OUT=path/to/schema.d.ts"; exit 1; }
+	pnpm dlx openapi-typescript api/openapi.yaml -o $(OUT)
 
 migration:   ## new migration: make migration name=add_something
 	@test -n "$(name)" || { echo "usage: make migration name=add_something"; exit 1; }

@@ -14,9 +14,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
-	"github.com/smarniw/metamorphosis/internal/api"
 	"github.com/smarniw/metamorphosis/internal/config"
 	"github.com/smarniw/metamorphosis/internal/google"
+	"github.com/smarniw/metamorphosis/internal/httpapi"
 	"github.com/smarniw/metamorphosis/internal/migrate"
 	"github.com/smarniw/metamorphosis/migrations"
 )
@@ -69,15 +69,15 @@ func run() error {
 		slog.Warn("DEV_LOGIN is enabled: POST /auth/dev-login issues tokens without credentials")
 	}
 
-	srv := &api.Server{DB: pool, Cfg: cfg}
+	deps := httpapi.Deps{DB: pool, Cfg: cfg}
 	if len(cfg.GoogleClientIDs) > 0 {
-		srv.Google = google.NewRemote(cfg.GoogleClientIDs, google.JWKSURL)
+		deps.Google = google.NewRemote(cfg.GoogleClientIDs, google.JWKSURL)
 		slog.Info("Google sign-in enabled")
 	} else {
 		slog.Info("Google sign-in disabled (GOOGLE_CLIENT_IDS unset)")
 	}
 
-	httpSrv := &http.Server{Addr: cfg.BindAddr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
+	httpSrv := &http.Server{Addr: cfg.BindAddr, Handler: httpapi.NewHandler(deps), ReadHeaderTimeout: 10 * time.Second}
 	errc := make(chan error, 1)
 	go func() { errc <- httpSrv.ListenAndServe() }()
 	slog.Info("listening", "addr", cfg.BindAddr)

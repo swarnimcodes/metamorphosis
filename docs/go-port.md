@@ -28,6 +28,20 @@ None affects the apps.
 - A request body is accepted without a `Content-Type: application/json` header.
 - Ties in the tag-only exercise search are ordered by id.
 
+### Since the move to the spec-first layers
+
+- JSON keys are written in the generator's order (alphabetical) in most responses; numbers are plain (`560`, not `560.0`).
+- An optional route that is switched off (dev-login without `DEV_LOGIN`, the Google routes without Google configured)
+  answers 404 with a JSON body instead of plain text.
+- Malformed query values and request bodies get the generated binder's one-line 400 (`invalid weeks`, `invalid request: ...`).
+  A malformed date says `date must be YYYY-MM-DD`, as before.
+- `PATCH /sets/{id}` with an out-of-range `rir` on a set that does not exist answers 400 (the range is checked first); it was 404.
+- `POST /workouts/{id}/finish` with malformed JSON is a 400 (the old handler ignored the body); an empty `?before=` on
+  `GET /workouts` is ignored instead of refused.
+- Body weights are JSON numbers only (a numeric string such as `"80.5"` is no longer accepted).
+- Statistics use exact decimal arithmetic, so a value that lands exactly on a rounding tie can differ in the last digit from
+  the old float path.
+
 ## Not verified
 
 - Behaviour under concurrent writes (two requests adding sets at once).
