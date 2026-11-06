@@ -64,7 +64,7 @@ echo "==> starting the ${impl} server on ${base_url}"
   # An empty environment for everything but what the server needs, so a developer's .env or
   # shell variables (GOOGLE_CLIENT_IDS, CORS_ORIGINS...) cannot change the behaviour under test.
   exec env -i PATH="$PATH" HOME="$HOME" \
-    DATABASE_URL="$db_url" JWT_SECRET=acceptance DEV_LOGIN=true RUN_MIGRATIONS=true \
+    DATABASE_URL="$db_url" JWT_SECRET=acceptance DEV_LOGIN=true AUTH_RATE_LIMIT_PER_MINUTE=0 RUN_MIGRATIONS=true \
     BIND_ADDR="127.0.0.1:${port}" "$bin"
 ) >"$tmp/server.log" 2>&1 &
 server_pid=$!

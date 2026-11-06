@@ -50,6 +50,9 @@ func run() error {
 		return err
 	}
 	poolCfg.MaxConns = 10
+	// Connections are recycled and checked, so a database restart or a stale connection heals by itself.
+	poolCfg.MaxConnLifetime = time.Hour
+	poolCfg.HealthCheckPeriod = time.Minute
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		return err
@@ -77,7 +80,8 @@ func run() error {
 		slog.Info("Google sign-in disabled (GOOGLE_CLIENT_IDS unset)")
 	}
 
-	httpSrv := &http.Server{Addr: cfg.BindAddr, Handler: httpapi.NewHandler(deps), ReadHeaderTimeout: 10 * time.Second}
+	httpSrv := &http.Server{Addr: cfg.BindAddr, Handler: httpapi.NewHandler(deps), ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout: 30 * time.Second, WriteTimeout: 60 * time.Second, IdleTimeout: 2 * time.Minute}
 	errc := make(chan error, 1)
 	go func() { errc <- httpSrv.ListenAndServe() }()
 	slog.Info("listening", "addr", cfg.BindAddr)

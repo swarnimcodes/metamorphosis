@@ -37,6 +37,11 @@ func renderError(w http.ResponseWriter, _ *http.Request, err error) {
 // badRequest answers a request the generated code could not even decode: malformed JSON, a wrong type, a value in
 // a path or query parameter that is not what the spec says.
 func badRequest(w http.ResponseWriter, _ *http.Request, err error) {
+	var tooBig *http.MaxBytesError
+	if errors.As(err, &tooBig) {
+		httpx.RenderError(w, &httpx.Error{Status: http.StatusRequestEntityTooLarge, Message: "request body too large"})
+		return
+	}
 	var format *gen.InvalidParamFormatError
 	if errors.As(err, &format) {
 		// Every date in the spec is a calendar date, so a date that does not parse says what a date looks like.

@@ -17,10 +17,29 @@ import (
 // database call cannot hold a connection forever.
 const requestTimeout = 30 * time.Second
 
+const usernameCheck = "/auth/username-available"
+
+// authLimit throttles sign-in, signup and refresh: they are what a password-guessing or token-guessing script hits.
+func authLimit(perMinute int) func(http.Handler) http.Handler {
+	return httpx.RateLimit(perMinute, func(r *http.Request) bool {
+		return strings.HasPrefix(r.URL.Path, "/auth/") && r.URL.Path != usernameCheck
+	})
+}
+
+// usernameCheckLimit is looser: the signup screen asks as the person types (debounced), and a hesitant user
+// should not be locked out of choosing a name.
+func usernameCheckLimit(perMinute int) func(http.Handler) http.Handler {
+	return httpx.RateLimit(perMinute*4, func(r *http.Request) bool { return r.URL.Path == usernameCheck })
+}
+
+// maxBodyBytes is the largest request body accepted. The biggest real one is a few hundred bytes.
+const maxBodyBytes = 1 << 20
+
 // NewHandler is the whole HTTP API: middleware, the health check and every operation of the spec, behind CORS.
 func NewHandler(d Deps) http.Handler {
 	r := chi.NewRouter()
-	r.Use(chimw.RequestID, httpx.RequestIDHeader, httpx.AccessLog, httpx.Recoverer, chimw.Timeout(requestTimeout))
+	r.Use(chimw.RequestID, httpx.RequestIDHeader, httpx.AccessLog, httpx.Recoverer, chimw.Timeout(requestTimeout),
+		httpx.NoStore, httpx.MaxBody(maxBodyBytes), authLimit(d.Cfg.AuthRateLimit), usernameCheckLimit(d.Cfg.AuthRateLimit))
 	r.NotFound(httpx.NotFoundHandler)
 	r.MethodFunc(http.MethodGet, "/health", httpx.Handle(func(w http.ResponseWriter, r *http.Request) error {
 		var one int

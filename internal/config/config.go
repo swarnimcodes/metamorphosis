@@ -23,6 +23,8 @@ type Config struct {
 	// CORSOrigins are the origins allowed to call the API from a browser.
 	CORSOrigins   []string
 	RunMigrations bool
+	// AuthRateLimit is how many requests per minute one client may make to /auth/*; 0 turns the limit off.
+	AuthRateLimit int
 	// LogLevel is debug, info, warn or error; at debug the server also logs one line per request (route and status,
 	// never the URL, a body or a token).
 	LogLevel slog.Level
@@ -73,6 +75,14 @@ func FromEnv() (*Config, error) {
 		if err := c.LogLevel.UnmarshalText([]byte(v)); err != nil {
 			return nil, fmt.Errorf("LOG_LEVEL must be debug, info, warn or error, got %q", v)
 		}
+	}
+	c.AuthRateLimit = 30
+	if v := os.Getenv("AUTH_RATE_LIMIT_PER_MINUTE"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 {
+			return nil, fmt.Errorf("AUTH_RATE_LIMIT_PER_MINUTE must be 0 or a positive integer, got %q", v)
+		}
+		c.AuthRateLimit = n
 	}
 	c.LogJSON = os.Getenv("LOG_FORMAT") == "json"
 	if v := os.Getenv("BIND_ADDR"); v != "" {

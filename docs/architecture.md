@@ -50,3 +50,19 @@ internal/httpapi/       auth middleware, error rendering, composition (server.go
 3. `make generate`, then implement the service method (with a unit test against a fake store) and the handler method
    the generated `StrictServerInterface` now requires.
 4. `make check` and `make compare`.
+
+## Limits and protection
+
+- **Requests:** a body larger than 1 MiB is refused with 413; a request runs at most 30 s (its context is cancelled after
+  that); responses carry `Cache-Control: no-store`; the HTTP server has read, write and idle timeouts.
+- **Rate limits** (per client, in memory, so right for one instance): `/auth/*` 30 requests a minute (the sign-in,
+  signup and refresh routes), `/auth/username-available` four times that because the signup screen asks as the person
+  types. `AUTH_RATE_LIMIT_PER_MINUTE` changes the base, `0` turns it off (the acceptance and compare tools sign in hundreds of
+  times a second from one address). The client address is Cloudflare's `CF-Connecting-IP`, believed only when the
+  connection itself comes from the local proxy (`httpx.ClientIP`): behind Caddy every connection is from 127.0.0.1.
+- **Database:** a pool of at most 10 connections, recycled hourly and health-checked every minute.
+- **Lists:** `GET /workouts` pages with `limit` and `before`; `/gyms` and `/exercises` take a clamped `limit`;
+  `/body-weights` returns the newest 5000; `/stats/exercises` is bounded by the exercises a user has logged. None of these
+  is unbounded.
+- **`/health`** checks the database on purpose: the deploy script rolls back when it fails, so a database problem must show
+  there. There is no separate liveness probe because nothing else asks for one.

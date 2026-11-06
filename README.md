@@ -22,6 +22,7 @@ go run ./cmd/api
 | `BIND_ADDR` | default `127.0.0.1:3000` |
 | `ACCESS_TOKEN_TTL_SECS` | default `3600` |
 | `DEV_LOGIN` | `true` mounts `POST /auth/dev-login`; never on a server |
+| `AUTH_RATE_LIMIT_PER_MINUTE` | requests per minute one client may make to `/auth/*` (default `30`, `0` = off) |
 | `LOG_LEVEL` | `debug`, `info` (default), `warn`, `error`. At `debug` each request logs its route and status, never the URL, a body or a token |
 | `LOG_FORMAT` | `json` for JSON logs; text by default |
 
