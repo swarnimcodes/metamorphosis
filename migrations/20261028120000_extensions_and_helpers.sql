@@ -1,9 +1,11 @@
+-- +goose Up
 -- Extensions and shared helpers used by every later migration.
 
 create extension if not exists citext;   -- case-insensitive email / username
 create extension if not exists pg_trgm;  -- fuzzy exercise / gym search
 
 -- Bumps updated_at on every UPDATE. Attached per table with a trigger.
+-- +goose StatementBegin
 create function set_updated_at() returns trigger
 language plpgsql as $$
 begin
@@ -11,6 +13,7 @@ begin
     return new;
 end;
 $$;
+-- +goose StatementEnd
 
 create type unit_system as enum ('metric', 'imperial');
 

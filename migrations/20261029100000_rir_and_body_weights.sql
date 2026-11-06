@@ -1,3 +1,4 @@
+-- +goose Up
 -- Reps in reserve per set (replaces the never-used rpe), and a daily bodyweight log.
 
 alter table sets drop column rpe;

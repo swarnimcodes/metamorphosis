@@ -1,3 +1,4 @@
+-- +goose Up
 -- Gyms get an area and a maps link, and the directory is seeded with verified gyms.
 
 alter table gyms add column area text;

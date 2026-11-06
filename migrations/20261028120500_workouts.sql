@@ -1,3 +1,4 @@
+-- +goose Up
 -- Workout logging: workouts -> exercises (with stacked tags) -> sets.
 
 create type workout_source as enum ('manual', 'excel_import');
@@ -58,6 +59,7 @@ create table workout_exercise_tags (
 );
 create index workout_exercise_tags_tag_idx on workout_exercise_tags (tag_id);
 
+-- +goose StatementBegin
 create function refresh_workout_exercise_variant_key() returns trigger
 language plpgsql as $$
 declare
@@ -73,6 +75,7 @@ begin
     return null;
 end;
 $$;
+-- +goose StatementEnd
 create trigger workout_exercise_tags_variant_key
     after insert or delete on workout_exercise_tags
     for each row execute function refresh_workout_exercise_variant_key();

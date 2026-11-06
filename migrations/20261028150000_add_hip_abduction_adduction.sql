@@ -1,3 +1,4 @@
+-- +goose Up
 -- Standard gym machines the starter catalog was missing.
 insert into muscle_groups (slug, name) values ('adductors', 'Adductors')
 on conflict (slug) do nothing;

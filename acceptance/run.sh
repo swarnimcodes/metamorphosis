@@ -9,10 +9,12 @@
 set -euo pipefail
 
 impl=go
-port=3101
+# ACCEPT_PORT and ACCEPT_NAME let several runs go side by side (separate worktrees): own port, own database.
+port="${ACCEPT_PORT:-3101}"
+name="${ACCEPT_NAME:-go}"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-db="metamorph_accept_${impl}"
+db="metamorph_accept_${name}"
 pg=(psql -X -q -U postgres -h localhost -d postgres -v ON_ERROR_STOP=1)
 # PGPASSWORD (used by psql here and by the suite) is also put into the server's URL when set, as CI needs.
 db_url="postgres://postgres${PGPASSWORD:+:${PGPASSWORD}}@localhost/${db}"
@@ -62,7 +64,7 @@ echo "==> starting the ${impl} server on ${base_url}"
   # An empty environment for everything but what the server needs, so a developer's .env or
   # shell variables (GOOGLE_CLIENT_IDS, CORS_ORIGINS...) cannot change the behaviour under test.
   exec env -i PATH="$PATH" HOME="$HOME" \
-    DATABASE_URL="$db_url" JWT_SECRET=acceptance DEV_LOGIN=true RUN_MIGRATIONS=true \
+    DATABASE_URL="$db_url" JWT_SECRET=acceptance DEV_LOGIN=true AUTH_RATE_LIMIT_PER_MINUTE=0 RUN_MIGRATIONS=true \
     BIND_ADDR="127.0.0.1:${port}" "$bin"
 ) >"$tmp/server.log" 2>&1 &
 server_pid=$!

@@ -22,23 +22,55 @@ go run ./cmd/api
 | `BIND_ADDR` | default `127.0.0.1:3000` |
 | `ACCESS_TOKEN_TTL_SECS` | default `3600` |
 | `DEV_LOGIN` | `true` mounts `POST /auth/dev-login`; never on a server |
+| `AUTH_RATE_LIMIT_PER_MINUTE` | requests per minute one client may make to `/auth/*` (default `30`, `0` = off) |
+| `LOG_LEVEL` | `debug`, `info` (default), `warn`, `error`. At `debug` each request logs its route and status, never the URL, a body or a token |
+| `LOG_FORMAT` | `json` for JSON logs; text by default |
 
 ## Database
 
-`migrations/*.sql` is the schema and is embedded in the binary. Migrations are recorded in sqlx's `_sqlx_migrations`
-table (with SHA-384 checksums), because the database was first migrated by the previous Rust API: nothing is applied
-twice, and a migration file that changed after it was applied stops startup. To add one, create
-`migrations/<YYYYMMDDHHMMSS>_<description>.sql`. Docs in `docs/schema` come from `tbls doc --rm-dist`.
+`migrations/*.sql` is the schema, applied by [goose](https://github.com/pressly/goose) (as a library, embedded in the
+binary) when `RUN_MIGRATIONS=true`. Files are named `<14-digit UTC timestamp>_<description>.sql`; each starts with
+`-- +goose Up`, and a statement with a `$$` body (a function) is wrapped in `-- +goose StatementBegin` / `StatementEnd`.
 
-## Tests
+- **Add one:** `make migration name=add_something`, edit the file, then `make migrations-sum`. Do not use goose's
+  sequential numbering (`-s`) or `goose fix`.
+- **Never edit or delete a migration that has been applied.** goose does not checksum applied files, so
+  `migrations/migrations.sum` does: a unit test fails when a recorded file changes or disappears.
+- **Keep migrations additive** (add columns and tables, do not drop or rename) for as long as rolling back to an older
+  binary matters: an old binary cannot see what a newer one applied.
+- The database was first migrated by the previous Rust API, which recorded versions in sqlx's `_sqlx_migrations` table.
+  On first start the new binary adopts those versions into `goose_db_version` without running anything (see
+  `internal/migrate`), and refuses to start if the two tables disagree. `_sqlx_migrations` is then left alone.
+
+Docs in `docs/schema` come from `tbls doc --rm-dist`.
+
+## Layout
+
+`api/openapi.yaml` is the contract; `queries/*.sql` holds every SQL statement. `make generate` turns them into
+`internal/httpapi/gen` (oapi-codegen: router, strict server, wire types) and `internal/db` (sqlc). Each feature is a
+service package (`internal/account`, `gym`, `exercise`, `workout`, `stats`, `bodyweight`: business rules, no HTTP) plus
+a handler file in `internal/httpapi` that only converts between wire types and service calls.
+`docs/architecture.md` has the rules and how to add an operation. `make ts-types OUT=...` generates the app's
+TypeScript types from the spec.
+
+## Develop
+
+`make` runs the everyday commands; the tools (golangci-lint, govulncheck) are pinned in `tools.mod` and run through
+`go tool`, so there is nothing to install.
 
 ```sh
-go test ./internal/...      # needs Postgres; TEST_DATABASE_URL defaults to postgres://postgres@localhost/postgres
-acceptance/run.sh           # builds and starts the server on a throwaway database and drives it over HTTP
+make test         # unit tests (need Postgres 18; TEST_DATABASE_URL defaults to postgres://postgres@localhost/postgres)
+make race         # the same with the race detector
+make lint         # golangci-lint
+make vuln         # govulncheck
+make acceptance   # builds and starts the server on a throwaway database and drives it over HTTP
+make compare      # the working tree against what is deployed, byte for byte, on a copy of $SOURCE_DB (default: metamorph)
+make check        # what CI runs
 ```
 
 `acceptance/` is a black-box suite for the API contract the apps depend on (status codes, JSON shapes, error codes).
-See `docs/go-port.md` for how the port from Rust was verified.
+`compare` is the refactoring safety net: it runs the deployed commit and your working tree side by side on one copy
+of a real-shaped database and diffs every read endpoint. See `docs/go-port.md` for how the port from Rust was verified.
 
 ## Deploying
 

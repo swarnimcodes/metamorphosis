@@ -1,3 +1,4 @@
+-- +goose Up
 -- Canonical exercises, their muscles, aliases and stackable variation tags.
 
 create table muscle_groups (

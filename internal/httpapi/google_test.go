@@ -1,6 +1,6 @@
 // Google sign-in: the ID-token verifier and the login/signup endpoints. Tokens are signed with throwaway keys
 // generated here; nothing touches the network or a real Google account.
-package api_test
+package httpapi_test
 
 import (
 	"bytes"
@@ -23,9 +23,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/smarniw/metamorphosis/internal/api"
 	"github.com/smarniw/metamorphosis/internal/config"
 	"github.com/smarniw/metamorphosis/internal/google"
+	"github.com/smarniw/metamorphosis/internal/httpapi"
 	"github.com/smarniw/metamorphosis/internal/testutil"
 )
 
@@ -165,8 +165,7 @@ type app struct {
 
 func newApp(t *testing.T) *app {
 	pool := testutil.NewDB(t)
-	s := &api.Server{DB: pool, Cfg: testConfig(), Google: verifier()}
-	return &app{t, pool, s.Handler()}
+	return &app{t, pool, httpapi.NewHandler(httpapi.Deps{DB: pool, Cfg: testConfig(), Google: verifier()})}
 }
 
 type reply struct {
@@ -405,7 +404,7 @@ func TestBadGoogleTokensAre401AndCreateNothing(t *testing.T) {
 
 func TestGoogleRoutesAreAbsentWhenNotConfigured(t *testing.T) {
 	pool := testutil.NewDB(t)
-	h := (&api.Server{DB: pool, Cfg: testConfig()}).Handler()
+	h := httpapi.NewHandler(httpapi.Deps{DB: pool, Cfg: testConfig()})
 	for _, c := range [][2]string{{"POST", "/auth/google"}, {"POST", "/auth/google/signup"}, {"GET", "/auth/username-available?username=abc"}} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest(c[0], c[1], strings.NewReader("{}")))
@@ -415,9 +414,9 @@ func TestGoogleRoutesAreAbsentWhenNotConfigured(t *testing.T) {
 
 func TestCORSAllowsOnlyConfiguredOriginsWithoutDevLogin(t *testing.T) {
 	pool := testutil.NewDB(t)
-	h := (&api.Server{DB: pool, Cfg: testConfig("http://localhost:1420"), Google: verifier()}).Handler()
+	h := httpapi.NewHandler(httpapi.Deps{DB: pool, Cfg: testConfig("http://localhost:1420"), Google: verifier()})
 	preflight := func(origin string) *httptest.ResponseRecorder {
-		req := httptest.NewRequest("OPTIONS", "/auth/google", nil)
+		req := httptest.NewRequest(http.MethodOptions, "/auth/google", nil)
 		req.Header.Set("Origin", origin)
 		req.Header.Set("Access-Control-Request-Method", "POST")
 		req.Header.Set("Access-Control-Request-Headers", "content-type")

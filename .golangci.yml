@@ -1,0 +1,35 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  # The defaults (errcheck, govet, ineffassign, staticcheck, unused) plus the ones that catch real mistakes in an
+  # HTTP + database service.
+  default: standard
+  enable:
+    - bodyclose      # response bodies that are never closed
+    - errorlint      # errors compared with == or type-asserted instead of errors.Is / errors.As
+    - noctx          # HTTP requests built without a context
+    - sqlclosecheck  # rows and statements that are never closed
+    - rowserrcheck   # rows.Err() never checked
+    - nilerr         # returning nil when err != nil
+    - misspell
+    - gosec
+    - unconvert
+    - usestdlibvars
+  settings:
+    gosec:
+      excludes:
+        - G104 # unhandled errors: errcheck already covers them
+  exclusions:
+    rules:
+      # Tests may build throwaway keys, read env and ignore some errors.
+      - path: _test\.go
+        linters: [gosec, errcheck, noctx]
+      - path: (acceptance|internal/testutil)/
+        linters: [gosec, errcheck, noctx]
+
+formatters:
+  enable:
+    - gofmt

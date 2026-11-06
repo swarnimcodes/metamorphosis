@@ -1,3 +1,4 @@
+-- +goose Up
 -- Reference data: muscle groups, variation tags and a starter set of official
 -- exercises. Everything is keyed by slug so rows can be looked up without
 -- knowing generated ids. Variations (equipment, grip, angle) are tags, not

@@ -384,8 +384,6 @@ func newUUID() string {
 	return h[0:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
 }
 
-func title(s string) string { return strings.ToUpper(s[:1]) + s[1:] }
-
 // ---- users --------------------------------------------------------------------------------
 
 // User is a signed-in dev-login account.
