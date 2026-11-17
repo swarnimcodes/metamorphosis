@@ -50,13 +50,14 @@ func TestWorkoutLoggingFlow(t *testing.T) {
 
 	// Tag order in the request must not change the variant key.
 	we := created(t, post(t, "/workouts/"+wid+"/exercises", u.Token, map[string]any{"exercise_id": bench, "tag_ids": []string{incline, dumbbell}}))
-	eq(t, "exercise field count", we.JSON.Len(), 10)
+	eq(t, "exercise field count", we.JSON.Len(), 11)
 	str(t, "variant_key", we.Get("variant_key"), "dumbbell+incline")
 	num(t, "position", we.Get("position"), 1)
 	str(t, "exercise_id", we.Get("exercise_id"), bench)
 	str(t, "exercise_name", we.Get("exercise_name"), "Bench Press")
 	str(t, "kind", we.Get("kind"), "weight_reps")
 	null(t, "superset_group", we.Get("superset_group"))
+	null(t, "weight_unit follows the account until chosen", we.Get("weight_unit"))
 	null(t, "notes", we.Get("notes"))
 	emptyArray(t, "sets", we.Get("sets"))
 	arrayLen(t, "tags", we.Get("tags"), 2)
