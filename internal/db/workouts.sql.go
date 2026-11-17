@@ -236,17 +236,18 @@ func (q *Queries) InsertWorkout(ctx context.Context, arg InsertWorkoutParams) (u
 }
 
 const insertWorkoutExercise = `-- name: InsertWorkoutExercise :one
-insert into workout_exercises (workout_id, exercise_id, position, superset_group, notes)
-values ($1, $2, $3, $4, $5)
+insert into workout_exercises (workout_id, exercise_id, position, superset_group, notes, weight_unit)
+values ($1, $2, $3, $4, $5, $6)
 returning id
 `
 
 type InsertWorkoutExerciseParams struct {
-	WorkoutID     uuid.UUID `json:"workout_id"`
-	ExerciseID    uuid.UUID `json:"exercise_id"`
-	Position      int32     `json:"position"`
-	SupersetGroup *int32    `json:"superset_group"`
-	Notes         *string   `json:"notes"`
+	WorkoutID     uuid.UUID   `json:"workout_id"`
+	ExerciseID    uuid.UUID   `json:"exercise_id"`
+	Position      int32       `json:"position"`
+	SupersetGroup *int32      `json:"superset_group"`
+	Notes         *string     `json:"notes"`
+	WeightUnit    *UnitSystem `json:"weight_unit"`
 }
 
 func (q *Queries) InsertWorkoutExercise(ctx context.Context, arg InsertWorkoutExerciseParams) (uuid.UUID, error) {
@@ -256,6 +257,7 @@ func (q *Queries) InsertWorkoutExercise(ctx context.Context, arg InsertWorkoutEx
 		arg.Position,
 		arg.SupersetGroup,
 		arg.Notes,
+		arg.WeightUnit,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)
@@ -358,7 +360,7 @@ func (q *Queries) ListExerciseSets(ctx context.Context, workoutExerciseID uuid.U
 }
 
 const listWorkoutExercises = `-- name: ListWorkoutExercises :many
-select we.id, we.exercise_id, e.name as exercise_name, e.kind, we.position, we.variant_key, we.superset_group, we.notes
+select we.id, we.exercise_id, e.name as exercise_name, e.kind, we.position, we.variant_key, we.superset_group, we.notes, we.weight_unit
   from workout_exercises we
   join exercises e on e.id = we.exercise_id
  where we.workout_id = $1 and we.deleted_at is null
@@ -374,6 +376,7 @@ type ListWorkoutExercisesRow struct {
 	VariantKey    string       `json:"variant_key"`
 	SupersetGroup *int32       `json:"superset_group"`
 	Notes         *string      `json:"notes"`
+	WeightUnit    *UnitSystem  `json:"weight_unit"`
 }
 
 func (q *Queries) ListWorkoutExercises(ctx context.Context, workoutID uuid.UUID) ([]ListWorkoutExercisesRow, error) {
@@ -394,6 +397,7 @@ func (q *Queries) ListWorkoutExercises(ctx context.Context, workoutID uuid.UUID)
 			&i.VariantKey,
 			&i.SupersetGroup,
 			&i.Notes,
+			&i.WeightUnit,
 		); err != nil {
 			return nil, err
 		}
@@ -643,6 +647,27 @@ func (q *Queries) ResolveWorkoutExercise(ctx context.Context, arg ResolveWorkout
 	var exercise_id uuid.UUID
 	err := row.Scan(&exercise_id)
 	return exercise_id, err
+}
+
+const setWorkoutExerciseUnit = `-- name: SetWorkoutExerciseUnit :execrows
+update workout_exercises we set weight_unit = $1
+  from workouts w
+ where we.id = $2 and w.id = we.workout_id and w.user_id = $3
+   and w.deleted_at is null and we.deleted_at is null
+`
+
+type SetWorkoutExerciseUnitParams struct {
+	WeightUnit *UnitSystem `json:"weight_unit"`
+	ID         uuid.UUID   `json:"id"`
+	UserID     uuid.UUID   `json:"user_id"`
+}
+
+func (q *Queries) SetWorkoutExerciseUnit(ctx context.Context, arg SetWorkoutExerciseUnitParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setWorkoutExerciseUnit, arg.WeightUnit, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateSet = `-- name: UpdateSet :one

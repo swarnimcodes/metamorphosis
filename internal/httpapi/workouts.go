@@ -66,7 +66,7 @@ func workoutExercise(e workout.Exercise) gen.WorkoutExercise {
 	}
 	return gen.WorkoutExercise{
 		Id: e.ID, ExerciseId: e.ExerciseID, ExerciseName: e.ExerciseName, Kind: e.Kind, Position: e.Position,
-		VariantKey: e.VariantKey, SupersetGroup: e.SupersetGroup, Notes: e.Notes, Tags: tags, Sets: workoutSets(e.Sets),
+		VariantKey: e.VariantKey, SupersetGroup: e.SupersetGroup, Notes: e.Notes, WeightUnit: e.WeightUnit, Tags: tags, Sets: workoutSets(e.Sets),
 	}
 }
 
@@ -143,7 +143,7 @@ func (a workoutsAPI) FinishWorkout(ctx context.Context, req gen.FinishWorkoutReq
 
 func (a workoutsAPI) AddWorkoutExercise(ctx context.Context, req gen.AddWorkoutExerciseRequestObject) (gen.AddWorkoutExerciseResponseObject, error) {
 	b := req.Body
-	in := workout.AddExerciseInput{ExerciseID: b.ExerciseId, SupersetGroup: b.SupersetGroup, Notes: b.Notes}
+	in := workout.AddExerciseInput{ExerciseID: b.ExerciseId, SupersetGroup: b.SupersetGroup, Notes: b.Notes, WeightUnit: b.WeightUnit}
 	if b.TagIds != nil {
 		in.TagIDs = append([]uuid.UUID{}, *b.TagIds...)
 	}
@@ -164,6 +164,13 @@ func (a workoutsAPI) GetLastSession(ctx context.Context, req gen.GetLastSessionR
 		return nil, err
 	}
 	return gen.GetLastSession200JSONResponse{WorkoutId: l.WorkoutID, StartedAt: l.StartedAt, Sets: workoutSets(l.Sets)}, nil
+}
+
+func (a workoutsAPI) UpdateWorkoutExercise(ctx context.Context, req gen.UpdateWorkoutExerciseRequestObject) (gen.UpdateWorkoutExerciseResponseObject, error) {
+	if err := a.svc.SetExerciseUnit(ctx, userFrom(ctx), req.Id, &req.Body.WeightUnit); err != nil {
+		return nil, err
+	}
+	return gen.UpdateWorkoutExercise204Response{}, nil
 }
 
 func (a workoutsAPI) DeleteWorkoutExercise(ctx context.Context, req gen.DeleteWorkoutExerciseRequestObject) (gen.DeleteWorkoutExerciseResponseObject, error) {

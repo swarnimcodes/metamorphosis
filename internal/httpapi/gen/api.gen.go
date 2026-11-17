@@ -363,6 +363,9 @@ type WorkoutExercise struct {
 
 	// VariantKey Sorted tag slugs joined by "+"; empty when untagged.
 	VariantKey string `json:"variant_key"`
+
+	// WeightUnit `metric` or `imperial`: the unit this exercise was logged in. A display hint (weights are always kg); null follows the account.
+	WeightUnit *string `json:"weight_unit"`
 }
 
 // WorkoutExerciseCreate `exercise_id` is required (the service answers 400 when it is missing).
@@ -371,6 +374,15 @@ type WorkoutExerciseCreate struct {
 	Notes         *string               `json:"notes,omitempty"`
 	SupersetGroup *int32                `json:"superset_group,omitempty"`
 	TagIds        *[]openapi_types.UUID `json:"tag_ids,omitempty"`
+
+	// WeightUnit `metric` or `imperial`.
+	WeightUnit *string `json:"weight_unit,omitempty"`
+}
+
+// WorkoutExerciseUpdate defines model for WorkoutExerciseUpdate.
+type WorkoutExerciseUpdate struct {
+	// WeightUnit `metric` or `imperial`.
+	WeightUnit string `json:"weight_unit"`
 }
 
 // WorkoutGymRef The gym a workout was logged at (a soft-deleted gym keeps its name in history).
@@ -581,6 +593,9 @@ type UpdateMeJSONRequestBody = MeUpdate
 // UpdateSetJSONRequestBody defines body for UpdateSet for application/json ContentType.
 type UpdateSetJSONRequestBody = WorkoutSetUpdate
 
+// UpdateWorkoutExerciseJSONRequestBody defines body for UpdateWorkoutExercise for application/json ContentType.
+type UpdateWorkoutExerciseJSONRequestBody = WorkoutExerciseUpdate
+
 // AddSetJSONRequestBody defines body for AddSet for application/json ContentType.
 type AddSetJSONRequestBody = WorkoutSetCreate
 
@@ -726,6 +741,9 @@ type ServerInterface interface {
 	// DeleteWorkoutExercise Removes the exercise and its sets.
 	// (DELETE /workout-exercises/{id})
 	DeleteWorkoutExercise(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// UpdateWorkoutExercise Sets the unit this exercise is logged in (display only; sets stay in kg).
+	// (PATCH /workout-exercises/{id})
+	UpdateWorkoutExercise(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// AddSet Adds a set at the next position; `completed_at` defaults to now.
 	// (POST /workout-exercises/{id}/sets)
 	AddSet(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
@@ -883,6 +901,12 @@ func (_ Unimplemented) ListTags(w http.ResponseWriter, r *http.Request) {
 // DeleteWorkoutExercise Removes the exercise and its sets.
 // (DELETE /workout-exercises/{id})
 func (_ Unimplemented) DeleteWorkoutExercise(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateWorkoutExercise Sets the unit this exercise is logged in (display only; sets stay in kg).
+// (PATCH /workout-exercises/{id})
+func (_ Unimplemented) UpdateWorkoutExercise(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1607,6 +1631,32 @@ func (siw *ServerInterfaceWrapper) DeleteWorkoutExercise(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// UpdateWorkoutExercise operation middleware
+func (siw *ServerInterfaceWrapper) UpdateWorkoutExercise(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateWorkoutExercise(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // AddSet operation middleware
 func (siw *ServerInterfaceWrapper) AddSet(w http.ResponseWriter, r *http.Request) {
 
@@ -2007,6 +2057,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Delete(options.BaseURL+"/workout-exercises/{id}", wrapper.DeleteWorkoutExercise)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/workout-exercises/{id}", wrapper.UpdateWorkoutExercise)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/workout-exercises/{id}/sets", wrapper.AddSet)
@@ -3215,6 +3268,65 @@ func (response DeleteWorkoutExercise404JSONResponse) VisitDeleteWorkoutExerciseR
 	return err
 }
 
+type UpdateWorkoutExerciseRequestObject struct {
+	Id   openapi_types.UUID `json:"id"`
+	Body *UpdateWorkoutExerciseJSONRequestBody
+}
+
+type UpdateWorkoutExerciseResponseObject interface {
+	VisitUpdateWorkoutExerciseResponse(w http.ResponseWriter) error
+}
+
+type UpdateWorkoutExercise204Response struct {
+}
+
+func (response UpdateWorkoutExercise204Response) VisitUpdateWorkoutExerciseResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type UpdateWorkoutExercise400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateWorkoutExercise400JSONResponse) VisitUpdateWorkoutExerciseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkoutExercise401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateWorkoutExercise401JSONResponse) VisitUpdateWorkoutExerciseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkoutExercise404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateWorkoutExercise404JSONResponse) VisitUpdateWorkoutExerciseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type AddSetRequestObject struct {
 	Id   openapi_types.UUID `json:"id"`
 	Body *AddSetJSONRequestBody
@@ -3765,6 +3877,9 @@ type StrictServerInterface interface {
 	// DeleteWorkoutExercise Removes the exercise and its sets.
 	// (DELETE /workout-exercises/{id})
 	DeleteWorkoutExercise(ctx context.Context, request DeleteWorkoutExerciseRequestObject) (DeleteWorkoutExerciseResponseObject, error)
+	// UpdateWorkoutExercise Sets the unit this exercise is logged in (display only; sets stay in kg).
+	// (PATCH /workout-exercises/{id})
+	UpdateWorkoutExercise(ctx context.Context, request UpdateWorkoutExerciseRequestObject) (UpdateWorkoutExerciseResponseObject, error)
 	// AddSet Adds a set at the next position; `completed_at` defaults to now.
 	// (POST /workout-exercises/{id}/sets)
 	AddSet(ctx context.Context, request AddSetRequestObject) (AddSetResponseObject, error)
@@ -4448,6 +4563,39 @@ func (sh *strictHandler) DeleteWorkoutExercise(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(DeleteWorkoutExerciseResponseObject); ok {
 		if err := validResponse.VisitDeleteWorkoutExerciseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateWorkoutExercise operation middleware
+func (sh *strictHandler) UpdateWorkoutExercise(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request UpdateWorkoutExerciseRequestObject
+
+	request.Id = id
+
+	var body UpdateWorkoutExerciseJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateWorkoutExercise(ctx, request.(UpdateWorkoutExerciseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateWorkoutExercise")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateWorkoutExerciseResponseObject); ok {
+		if err := validResponse.VisitUpdateWorkoutExerciseResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

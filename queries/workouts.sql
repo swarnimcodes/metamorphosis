@@ -33,7 +33,7 @@ select w.id, w.title, w.gym_id, g.name as gym_name, g.area as gym_area, g.city a
  where w.id = @id and w.user_id = @user_id and w.deleted_at is null;
 
 -- name: ListWorkoutExercises :many
-select we.id, we.exercise_id, e.name as exercise_name, e.kind, we.position, we.variant_key, we.superset_group, we.notes
+select we.id, we.exercise_id, e.name as exercise_name, e.kind, we.position, we.variant_key, we.superset_group, we.notes, we.weight_unit
   from workout_exercises we
   join exercises e on e.id = we.exercise_id
  where we.workout_id = @workout_id and we.deleted_at is null
@@ -106,8 +106,8 @@ select (coalesce(max(position), 0) + 1)::int4 as next_position from workout_exer
  where workout_id = @workout_id and deleted_at is null;
 
 -- name: InsertWorkoutExercise :one
-insert into workout_exercises (workout_id, exercise_id, position, superset_group, notes)
-values (@workout_id, @exercise_id, @position, @superset_group, @notes)
+insert into workout_exercises (workout_id, exercise_id, position, superset_group, notes, weight_unit)
+values (@workout_id, @exercise_id, @position, @superset_group, @notes, @weight_unit)
 returning id;
 
 -- name: InsertWorkoutExerciseTags :exec
@@ -117,6 +117,12 @@ select @workout_exercise_id, unnest(@tag_ids::uuid[]) on conflict do nothing;
 
 -- name: DeleteWorkoutExercise :execrows
 update workout_exercises we set deleted_at = now()
+  from workouts w
+ where we.id = @id and w.id = we.workout_id and w.user_id = @user_id
+   and w.deleted_at is null and we.deleted_at is null;
+
+-- name: SetWorkoutExerciseUnit :execrows
+update workout_exercises we set weight_unit = @weight_unit
   from workouts w
  where we.id = @id and w.id = we.workout_id and w.user_id = @user_id
    and w.deleted_at is null and we.deleted_at is null;
