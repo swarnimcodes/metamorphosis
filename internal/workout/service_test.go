@@ -29,6 +29,8 @@ type fakeStore struct {
 	merged     map[uuid.UUID]uuid.UUID
 	unknownEx  bool
 	updated    []db.UpdateSetParams
+	unitSet    []db.SetWorkoutExerciseUnitParams
+	unitRows   int64
 }
 
 func (f *fakeStore) WorkoutTimezoneKnown(_ context.Context, name string) (bool, error) {
@@ -272,4 +274,36 @@ type listStore struct {
 func (l *listStore) ListWorkoutSummaries(_ context.Context, a db.ListWorkoutSummariesParams) ([]db.ListWorkoutSummariesRow, error) {
 	l.onList(a)
 	return nil, nil
+}
+
+func (f *fakeStore) SetWorkoutExerciseUnit(_ context.Context, a db.SetWorkoutExerciseUnitParams) (int64, error) {
+	f.unitSet = append(f.unitSet, a)
+	return f.unitRows, nil
+}
+
+func TestExerciseUnitIsValidatedAndOwned(t *testing.T) {
+	ctx, id := context.Background(), uuid.New()
+	f := &fakeStore{unitRows: 1}
+	s := workout.NewTestService(f)
+	for _, bad := range []*string{nil, ptr(""), ptr("lb"), ptr("Imperial")} {
+		if err := s.SetExerciseUnit(ctx, user, id, bad); kind(err) != domain.KindInvalid {
+			t.Fatalf("%v: want invalid, got %v", bad, err)
+		}
+	}
+	if _, err := s.AddExercise(ctx, user, uuid.New(), workout.AddExerciseInput{ExerciseID: ptr(uuid.New()), WeightUnit: ptr("lb")}); kind(err) != domain.KindInvalid {
+		t.Fatalf("add with a bad unit should be invalid, got %v", err)
+	}
+	if len(f.unitSet) != 0 {
+		t.Fatal("a refused unit must not reach the store")
+	}
+	if err := s.SetExerciseUnit(ctx, user, id, ptr("imperial")); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.unitSet[0]; got.ID != id || got.UserID != user || *got.WeightUnit != db.UnitSystemImperial {
+		t.Fatalf("got %+v", got)
+	}
+	f.unitRows = 0
+	if err := s.SetExerciseUnit(ctx, user, id, ptr("metric")); kind(err) != domain.KindNotFound {
+		t.Fatalf("someone else's exercise should be not found, got %v", err)
+	}
 }

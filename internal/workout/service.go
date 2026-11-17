@@ -46,6 +46,7 @@ type Store interface {
 	InsertWorkoutExercise(ctx context.Context, arg db.InsertWorkoutExerciseParams) (uuid.UUID, error)
 	InsertWorkoutExerciseTags(ctx context.Context, arg db.InsertWorkoutExerciseTagsParams) error
 	DeleteWorkoutExercise(ctx context.Context, arg db.DeleteWorkoutExerciseParams) (int64, error)
+	SetWorkoutExerciseUnit(ctx context.Context, arg db.SetWorkoutExerciseUnitParams) (int64, error)
 	DeleteExerciseSets(ctx context.Context, workoutExerciseID uuid.UUID) error
 	LockWorkoutExercise(ctx context.Context, arg db.LockWorkoutExerciseParams) (uuid.UUID, error)
 	NextSetPosition(ctx context.Context, workoutExerciseID uuid.UUID) (int32, error)
@@ -115,6 +116,7 @@ type Exercise struct {
 	VariantKey    string
 	SupersetGroup *int32
 	Notes         *string
+	WeightUnit    *string
 	Tags          []Tag
 	Sets          []Set
 }
@@ -176,6 +178,7 @@ type AddExerciseInput struct {
 	TagIDs        []uuid.UUID
 	SupersetGroup *int32
 	Notes         *string
+	WeightUnit    *string
 }
 
 // SetInput is a new set.
@@ -385,7 +388,7 @@ func load(ctx context.Context, st Store, user, id uuid.UUID) (Workout, error) {
 		w.Exercises = append(w.Exercises, Exercise{
 			ID: e.ID, ExerciseID: e.ExerciseID, ExerciseName: e.ExerciseName, Kind: string(e.Kind),
 			Position: e.Position, VariantKey: e.VariantKey, SupersetGroup: e.SupersetGroup, Notes: e.Notes,
-			Tags: []Tag{}, Sets: []Set{},
+			WeightUnit: unitString(e.WeightUnit), Tags: []Tag{}, Sets: []Set{},
 		})
 	}
 	byID := make(map[uuid.UUID]*Exercise, len(w.Exercises))
@@ -451,12 +454,16 @@ func (s *Service) AddExercise(ctx context.Context, user, workoutID uuid.UUID, in
 	if in.ExerciseID == nil {
 		return Exercise{}, domain.Invalid("missing field `exercise_id`")
 	}
+	unit, err := parseUnit(in.WeightUnit)
+	if err != nil {
+		return Exercise{}, err
+	}
 	tagIDs := in.TagIDs
 	if tagIDs == nil {
 		tagIDs = []uuid.UUID{}
 	}
 	var weID uuid.UUID
-	err := s.tx(ctx, func(st Store) error {
+	err = s.tx(ctx, func(st Store) error {
 		if _, err := st.LockWorkout(ctx, db.LockWorkoutParams{ID: workoutID, UserID: user}); err != nil {
 			return notFound(err)
 		}
@@ -473,7 +480,7 @@ func (s *Service) AddExercise(ctx context.Context, user, workoutID uuid.UUID, in
 		}
 		weID, err = st.InsertWorkoutExercise(ctx, db.InsertWorkoutExerciseParams{
 			WorkoutID: workoutID, ExerciseID: exerciseID, Position: position,
-			SupersetGroup: in.SupersetGroup, Notes: in.Notes,
+			SupersetGroup: in.SupersetGroup, Notes: in.Notes, WeightUnit: unit,
 		})
 		if err != nil {
 			return err
@@ -496,6 +503,44 @@ func (s *Service) AddExercise(ctx context.Context, user, workoutID uuid.UUID, in
 		}
 	}
 	return Exercise{}, domain.NotFound()
+}
+
+func unitString(u *db.UnitSystem) *string {
+	if u == nil {
+		return nil
+	}
+	s := string(*u)
+	return &s
+}
+
+func parseUnit(v *string) (*db.UnitSystem, error) {
+	if v == nil {
+		return nil, nil
+	}
+	u := db.UnitSystem(*v)
+	if u != db.UnitSystemMetric && u != db.UnitSystemImperial {
+		return nil, domain.Invalid("weight_unit must be metric or imperial")
+	}
+	return &u, nil
+}
+
+// SetExerciseUnit records the unit a logged exercise is shown in. Weights stay kg; this is a display hint.
+func (s *Service) SetExerciseUnit(ctx context.Context, user, id uuid.UUID, weightUnit *string) error {
+	if weightUnit == nil {
+		return domain.Invalid("missing field `weight_unit`")
+	}
+	unit, err := parseUnit(weightUnit)
+	if err != nil {
+		return err
+	}
+	n, err := s.store.SetWorkoutExerciseUnit(ctx, db.SetWorkoutExerciseUnitParams{ID: id, UserID: user, WeightUnit: unit})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return domain.NotFound()
+	}
+	return nil
 }
 
 // RemoveExercise soft-deletes a logged exercise and its sets.

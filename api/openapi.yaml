@@ -424,6 +424,20 @@ paths:
   /workout-exercises/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: updateWorkoutExercise
+      tags: [workouts]
+      summary: Sets the unit this exercise is logged in (display only; sets stay in kg).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkoutExerciseUpdate" }
+      responses:
+        "204": { description: Updated. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
     delete:
       operationId: deleteWorkoutExercise
       tags: [workouts]
@@ -752,7 +766,7 @@ components:
       enum: [working, warmup, drop, failure]
     WorkoutExercise:
       type: object
-      required: [id, exercise_id, exercise_name, kind, position, variant_key, superset_group, notes, tags, sets]
+      required: [id, exercise_id, exercise_name, kind, position, variant_key, superset_group, notes, weight_unit, tags, sets]
       properties:
         id: { type: string, format: uuid }
         exercise_id: { type: string, format: uuid }
@@ -762,6 +776,7 @@ components:
         variant_key: { type: string, description: 'Sorted tag slugs joined by "+"; empty when untagged.' }
         superset_group: { type: integer, format: int32, nullable: true }
         notes: { type: string, nullable: true }
+        weight_unit: { type: string, nullable: true, description: "`metric` or `imperial`: the unit this exercise was logged in. A display hint (weights are always kg); null follows the account." }
         tags: { type: array, items: { $ref: "#/components/schemas/WorkoutTag" } }
         sets: { type: array, items: { $ref: "#/components/schemas/WorkoutSet" } }
     Workout:
@@ -825,6 +840,12 @@ components:
         tag_ids: { type: array, items: { type: string, format: uuid } }
         superset_group: { type: integer, format: int32 }
         notes: { type: string }
+        weight_unit: { type: string, description: "`metric` or `imperial`." }
+    WorkoutExerciseUpdate:
+      type: object
+      required: [weight_unit]
+      properties:
+        weight_unit: { type: string, description: "`metric` or `imperial`." }
     WorkoutSetCreate:
       type: object
       properties:

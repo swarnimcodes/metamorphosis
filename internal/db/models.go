@@ -641,6 +641,8 @@ type WorkoutExercise struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 	DeletedAt     *time.Time `json:"deleted_at"`
+	// Unit the exercise was logged in. Display hint only; sets.weight_kg is canonical. Null follows users.unit_system.
+	WeightUnit *UnitSystem `json:"weight_unit"`
 }
 
 type WorkoutExerciseTag struct {
