@@ -316,6 +316,49 @@ func (ns NullUnitSystem) Value() (driver.Value, error) {
 	return string(ns.UnitSystem), nil
 }
 
+type UserRole string
+
+const (
+	UserRoleUser      UserRole = "user"
+	UserRoleModerator UserRole = "moderator"
+	UserRoleAdmin     UserRole = "admin"
+)
+
+func (e *UserRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = UserRole(s)
+	case string:
+		*e = UserRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for UserRole: %T", src)
+	}
+	return nil
+}
+
+type NullUserRole struct {
+	UserRole UserRole `json:"user_role"`
+	Valid    bool     `json:"valid"` // Valid is true if UserRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullUserRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.UserRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.UserRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullUserRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.UserRole), nil
+}
+
 type Visibility string
 
 const (
@@ -480,7 +523,11 @@ type Gym struct {
 	// Link to the place on a maps service. Stored and opened, never fetched or resolved by the server.
 	MapsUrl *string `json:"maps_url"`
 	// Region/state name, e.g. "Maharashtra". Free text; the app offers a list.
-	State *string `json:"state"`
+	State      *string       `json:"state"`
+	VerifiedAt *time.Time    `json:"verified_at"`
+	VerifiedBy uuid.NullUUID `json:"verified_by"`
+	// Set when this gym was merged into another: its workouts moved there and it is soft-deleted.
+	MergedIntoID uuid.NullUUID `json:"merged_into_id"`
 }
 
 // One row per saved edit of a gym: which fields changed, from what, to what, and by whom.
@@ -490,6 +537,8 @@ type GymEdit struct {
 	UserID    uuid.NullUUID `json:"user_id"`
 	Changes   []byte        `json:"changes"`
 	CreatedAt time.Time     `json:"created_at"`
+	Kind      string        `json:"kind"`
+	RevertOf  uuid.NullUUID `json:"revert_of"`
 }
 
 // Reference list of muscle groups (chest, lats, quads, ...).
@@ -599,6 +648,8 @@ type User struct {
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 	DeletedAt *time.Time `json:"deleted_at"`
+	// user, moderator or admin. Granted by an operator with SQL; the API never changes it.
+	Role UserRole `json:"role"`
 }
 
 // A user's saved gyms. Doubles as gym membership for later social features.

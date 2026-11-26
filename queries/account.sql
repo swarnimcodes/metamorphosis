@@ -1,5 +1,5 @@
 -- name: GetMe :one
-select id, username, display_name, email, avatar_url, unit_system, timezone
+select id, username, display_name, email, avatar_url, unit_system, timezone, role
   from users
  where id = @id and deleted_at is null;
 
@@ -10,7 +10,7 @@ update users
        unit_system = coalesce(sqlc.narg('unit_system')::unit_system, unit_system),
        timezone = coalesce(sqlc.narg('timezone'), timezone)
  where id = @id and deleted_at is null
-returning id, username, display_name, email, avatar_url, unit_system, timezone;
+returning id, username, display_name, email, avatar_url, unit_system, timezone, role;
 
 -- name: TimezoneKnown :one
 -- Anything stored and later used in `at time zone` must be a zone the database knows.

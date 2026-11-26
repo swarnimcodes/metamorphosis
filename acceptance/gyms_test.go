@@ -389,7 +389,7 @@ func TestGymEditDetailAndHistory(t *testing.T) {
 	eq(t, "the editor sees it as theirs", ok(t, get(t, "/gyms/"+id+"/history", b.Token)).JSON.Idx(0).Get("by_me").Bool(), true)
 
 	d := ok(t, get(t, "/gyms/"+id, b.Token))
-	eq(t, "detail field count", d.JSON.Len(), 4)
+	eq(t, "detail field count", d.JSON.Len(), 5)
 	assertGymShape(t, d.Get("gym"))
 	num(t, "no visits yet", d.Get("visits"), 0)
 	null(t, "no last visit", d.Get("last_visit"))
@@ -409,7 +409,7 @@ func TestGymEditDetailAndHistory(t *testing.T) {
 	// The seeded gyms are verified and locked.
 	seeded := ok(t, get(t, "/gyms?q=cult+kalyani", a.Token)).JSON.Idx(0).Get("id").Str()
 	eq(t, "seeded gym is not editable", ok(t, get(t, "/gyms/"+seeded, a.Token)).Get("editable").Bool(), false)
-	errBody(t, patch(t, "/gyms/"+seeded, a.Token, map[string]any{"city": "Hacked"}), 400, "verified gyms can't be edited", "gym_locked")
+	errBody(t, patch(t, "/gyms/"+seeded, a.Token, map[string]any{"city": "Hacked"}), 403, "only moderators can edit verified gyms", "gym_locked")
 }
 
 func TestGymChainsListsUsedChains(t *testing.T) {

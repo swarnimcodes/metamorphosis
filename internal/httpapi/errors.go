@@ -17,6 +17,8 @@ var statusOf = map[domain.Kind]int{
 	domain.KindNotFound:     http.StatusNotFound,
 	domain.KindConflict:     http.StatusConflict,
 	domain.KindUpstream:     http.StatusBadGateway,
+	domain.KindForbidden:    http.StatusForbidden,
+	domain.KindRateLimited:  http.StatusTooManyRequests,
 }
 
 // toHTTP turns whatever a handler returned into the API's error: a service's domain error keeps its message and

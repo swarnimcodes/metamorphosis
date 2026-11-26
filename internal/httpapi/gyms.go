@@ -57,7 +57,10 @@ func (a gymsAPI) GetGym(ctx context.Context, req gen.GetGymRequestObject) (gen.G
 	if err != nil {
 		return nil, err
 	}
-	return gen.GetGym200JSONResponse{Gym: gymOut(d.Gym), Visits: d.Visits, LastVisit: d.LastVisit, Editable: d.Editable}, nil
+	return gen.GetGym200JSONResponse{
+		Gym: gymOut(d.Gym), Visits: d.Visits, LastVisit: d.LastVisit, Editable: d.Can.Edit,
+		Can: gen.GymAbilities{Edit: d.Can.Edit, Verify: d.Can.Verify, Revert: d.Can.Revert, Merge: d.Can.Merge, Delete: d.Can.Delete},
+	}, nil
 }
 
 func (a gymsAPI) UpdateGym(ctx context.Context, req gen.UpdateGymRequestObject) (gen.UpdateGymResponseObject, error) {
@@ -83,7 +86,10 @@ func (a gymsAPI) GetGymHistory(ctx context.Context, req gen.GetGymHistoryRequest
 		for k, c := range e.Changes {
 			changes[k] = gen.GymChange{From: c.From, To: c.To}
 		}
-		out = append(out, gen.GymEdit{Id: e.ID, ByMe: e.ByMe, At: e.At, Changes: changes})
+		out = append(out, gen.GymEdit{
+			Id: e.ID, Kind: gen.GymEditKind(e.Kind), ByMe: e.ByMe, By: e.By, At: e.At, Changes: changes,
+			Reverted: e.Reverted, Revertible: e.Revertible,
+		})
 	}
 	return out, nil
 }
@@ -94,4 +100,35 @@ func (a gymsAPI) ListGymChains(ctx context.Context, _ gen.ListGymChainsRequestOb
 		return nil, err
 	}
 	return gen.ListGymChains200JSONResponse(chains), nil
+}
+
+func (a gymsAPI) DeleteGym(ctx context.Context, req gen.DeleteGymRequestObject) (gen.DeleteGymResponseObject, error) {
+	if err := a.gyms.Remove(ctx, userFrom(ctx), req.Id); err != nil {
+		return nil, err
+	}
+	return gen.DeleteGym204Response{}, nil
+}
+
+func (a gymsAPI) SetGymVerified(ctx context.Context, req gen.SetGymVerifiedRequestObject) (gen.SetGymVerifiedResponseObject, error) {
+	g, err := a.gyms.SetVerified(ctx, userFrom(ctx), req.Id, req.Body.Verified)
+	if err != nil {
+		return nil, err
+	}
+	return gen.SetGymVerified200JSONResponse(gymOut(g)), nil
+}
+
+func (a gymsAPI) MergeGym(ctx context.Context, req gen.MergeGymRequestObject) (gen.MergeGymResponseObject, error) {
+	g, err := a.gyms.Merge(ctx, userFrom(ctx), req.Id, req.Body.Into)
+	if err != nil {
+		return nil, err
+	}
+	return gen.MergeGym200JSONResponse(gymOut(g)), nil
+}
+
+func (a gymsAPI) RevertGymEdit(ctx context.Context, req gen.RevertGymEditRequestObject) (gen.RevertGymEditResponseObject, error) {
+	g, err := a.gyms.Revert(ctx, userFrom(ctx), req.Id, req.EditId)
+	if err != nil {
+		return nil, err
+	}
+	return gen.RevertGymEdit200JSONResponse(gymOut(g)), nil
 }

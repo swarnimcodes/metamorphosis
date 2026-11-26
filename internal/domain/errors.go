@@ -18,6 +18,10 @@ const (
 	KindConflict
 	// KindUpstream is a dependency that could not be reached (502).
 	KindUpstream
+	// KindForbidden is a caller who is known but not allowed to do this (403).
+	KindForbidden
+	// KindRateLimited is a caller who is doing something too often (429).
+	KindRateLimited
 )
 
 // Error is a failure a service reports on purpose. Anything else a service returns is an unexpected fault (500).
@@ -56,3 +60,13 @@ func ConflictWith(message string, extra map[string]any) *Error {
 }
 
 func Upstream(message string) *Error { return &Error{Kind: KindUpstream, Message: message} }
+
+// Forbidden is an action the caller's role does not allow.
+func Forbidden(code, message string) *Error {
+	return &Error{Kind: KindForbidden, Code: code, Message: message}
+}
+
+// RateLimited is a caller who must wait before doing this again.
+func RateLimited(message string) *Error {
+	return &Error{Kind: KindRateLimited, Code: "rate_limited", Message: message}
+}

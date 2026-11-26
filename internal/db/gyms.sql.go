@@ -12,6 +12,33 @@ import (
 	"github.com/google/uuid"
 )
 
+const countRecentGymEdits = `-- name: CountRecentGymEdits :one
+select count(*)::int4 from gym_edits
+ where user_id = $1 and kind in ('edit', 'revert') and created_at > $2
+`
+
+type CountRecentGymEditsParams struct {
+	UserID uuid.NullUUID `json:"user_id"`
+	Since  time.Time     `json:"since"`
+}
+
+// Edits and reverts a user made since a moment: the edit rate limit.
+func (q *Queries) CountRecentGymEdits(ctx context.Context, arg CountRecentGymEditsParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countRecentGymEdits, arg.UserID, arg.Since)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const dropUserGyms = `-- name: DropUserGyms :exec
+delete from user_gyms where gym_id = $1
+`
+
+func (q *Queries) DropUserGyms(ctx context.Context, gymID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, dropUserGyms, gymID)
+	return err
+}
+
 const getGym = `-- name: GetGym :one
 select g.id, g.name, g.chain, g.area, g.address, g.city, g.lat, g.lng, g.maps_url, g.verified, g.country_code, g.state,
        v.visits::int4 as visits, v.last_visit
@@ -66,6 +93,48 @@ func (q *Queries) GetGym(ctx context.Context, arg GetGymParams) (GetGymRow, erro
 		&i.LastVisit,
 	)
 	return i, err
+}
+
+const getGymEdit = `-- name: GetGymEdit :one
+select e.id, e.kind, e.changes,
+       exists (select 1 from gym_edits r where r.revert_of = e.id) as reverted
+  from gym_edits e
+ where e.id = $1 and e.gym_id = $2
+`
+
+type GetGymEditParams struct {
+	ID    uuid.UUID `json:"id"`
+	GymID uuid.UUID `json:"gym_id"`
+}
+
+type GetGymEditRow struct {
+	ID       uuid.UUID `json:"id"`
+	Kind     string    `json:"kind"`
+	Changes  []byte    `json:"changes"`
+	Reverted bool      `json:"reverted"`
+}
+
+func (q *Queries) GetGymEdit(ctx context.Context, arg GetGymEditParams) (GetGymEditRow, error) {
+	row := q.db.QueryRow(ctx, getGymEdit, arg.ID, arg.GymID)
+	var i GetGymEditRow
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Changes,
+		&i.Reverted,
+	)
+	return i, err
+}
+
+const gymUserRole = `-- name: GymUserRole :one
+select role from users where id = $1 and deleted_at is null
+`
+
+func (q *Queries) GymUserRole(ctx context.Context, id uuid.UUID) (UserRole, error) {
+	row := q.db.QueryRow(ctx, gymUserRole, id)
+	var role UserRole
+	err := row.Scan(&role)
+	return role, err
 }
 
 const insertGym = `-- name: InsertGym :one
@@ -132,17 +201,26 @@ func (q *Queries) InsertGym(ctx context.Context, arg InsertGymParams) (InsertGym
 }
 
 const insertGymEdit = `-- name: InsertGymEdit :exec
-insert into gym_edits (gym_id, user_id, changes) values ($1, $2, $3)
+insert into gym_edits (gym_id, user_id, kind, changes, revert_of)
+values ($1, $2, $3, $4, $5)
 `
 
 type InsertGymEditParams struct {
-	GymID   uuid.UUID     `json:"gym_id"`
-	UserID  uuid.NullUUID `json:"user_id"`
-	Changes []byte        `json:"changes"`
+	GymID    uuid.UUID     `json:"gym_id"`
+	UserID   uuid.NullUUID `json:"user_id"`
+	Kind     string        `json:"kind"`
+	Changes  []byte        `json:"changes"`
+	RevertOf uuid.NullUUID `json:"revert_of"`
 }
 
 func (q *Queries) InsertGymEdit(ctx context.Context, arg InsertGymEditParams) error {
-	_, err := q.db.Exec(ctx, insertGymEdit, arg.GymID, arg.UserID, arg.Changes)
+	_, err := q.db.Exec(ctx, insertGymEdit,
+		arg.GymID,
+		arg.UserID,
+		arg.Kind,
+		arg.Changes,
+		arg.RevertOf,
+	)
 	return err
 }
 
@@ -174,7 +252,14 @@ func (q *Queries) ListGymChains(ctx context.Context, maxRows int32) ([]string, e
 }
 
 const listGymEdits = `-- name: ListGymEdits :many
-select id, user_id, changes, created_at from gym_edits where gym_id = $1 order by created_at desc, id desc limit $2
+select e.id, e.user_id, e.kind, e.changes, e.revert_of, e.created_at,
+       u.display_name as editor_name,
+       exists (select 1 from gym_edits r where r.revert_of = e.id) as reverted
+  from gym_edits e
+  left join users u on u.id = e.user_id
+ where e.gym_id = $1
+ order by e.created_at desc, e.id desc
+ limit $2
 `
 
 type ListGymEditsParams struct {
@@ -183,12 +268,17 @@ type ListGymEditsParams struct {
 }
 
 type ListGymEditsRow struct {
-	ID        uuid.UUID     `json:"id"`
-	UserID    uuid.NullUUID `json:"user_id"`
-	Changes   []byte        `json:"changes"`
-	CreatedAt time.Time     `json:"created_at"`
+	ID         uuid.UUID     `json:"id"`
+	UserID     uuid.NullUUID `json:"user_id"`
+	Kind       string        `json:"kind"`
+	Changes    []byte        `json:"changes"`
+	RevertOf   uuid.NullUUID `json:"revert_of"`
+	CreatedAt  time.Time     `json:"created_at"`
+	EditorName *string       `json:"editor_name"`
+	Reverted   bool          `json:"reverted"`
 }
 
+// editor_name is only ever shown to moderators; the service drops it for everyone else.
 func (q *Queries) ListGymEdits(ctx context.Context, arg ListGymEditsParams) ([]ListGymEditsRow, error) {
 	rows, err := q.db.Query(ctx, listGymEdits, arg.GymID, arg.MaxRows)
 	if err != nil {
@@ -201,8 +291,12 @@ func (q *Queries) ListGymEdits(ctx context.Context, arg ListGymEditsParams) ([]L
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
+			&i.Kind,
 			&i.Changes,
+			&i.RevertOf,
 			&i.CreatedAt,
+			&i.EditorName,
+			&i.Reverted,
 		); err != nil {
 			return nil, err
 		}
@@ -252,6 +346,54 @@ func (q *Queries) LockGym(ctx context.Context, id uuid.UUID) (LockGymRow, error)
 		&i.State,
 	)
 	return i, err
+}
+
+const markGymMerged = `-- name: MarkGymMerged :exec
+update gyms set deleted_at = now(), merged_into_id = $1 where id = $2 and deleted_at is null
+`
+
+type MarkGymMergedParams struct {
+	TargetID uuid.NullUUID `json:"target_id"`
+	ID       uuid.UUID     `json:"id"`
+}
+
+func (q *Queries) MarkGymMerged(ctx context.Context, arg MarkGymMergedParams) error {
+	_, err := q.db.Exec(ctx, markGymMerged, arg.TargetID, arg.ID)
+	return err
+}
+
+const moveGymWorkouts = `-- name: MoveGymWorkouts :execrows
+update workouts set gym_id = $1 where gym_id = $2
+`
+
+type MoveGymWorkoutsParams struct {
+	TargetID uuid.NullUUID `json:"target_id"`
+	SourceID uuid.NullUUID `json:"source_id"`
+}
+
+func (q *Queries) MoveGymWorkouts(ctx context.Context, arg MoveGymWorkoutsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, moveGymWorkouts, arg.TargetID, arg.SourceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const moveUserGyms = `-- name: MoveUserGyms :exec
+insert into user_gyms (user_id, gym_id, is_default)
+select ug.user_id, $1::uuid, false from user_gyms ug where ug.gym_id = $2
+on conflict do nothing
+`
+
+type MoveUserGymsParams struct {
+	TargetID uuid.UUID `json:"target_id"`
+	SourceID uuid.UUID `json:"source_id"`
+}
+
+// Saved gyms follow the merge. A user's default is not carried over: they may already have another one.
+func (q *Queries) MoveUserGyms(ctx context.Context, arg MoveUserGymsParams) error {
+	_, err := q.db.Exec(ctx, moveUserGyms, arg.TargetID, arg.SourceID)
+	return err
 }
 
 const searchGyms = `-- name: SearchGyms :many
@@ -345,6 +487,24 @@ func (q *Queries) SearchGyms(ctx context.Context, arg SearchGymsParams) ([]Searc
 	return items, nil
 }
 
+const setGymVerified = `-- name: SetGymVerified :exec
+update gyms set verified = $1,
+                verified_at = case when $1 then now() end,
+                verified_by = case when $1 then $2::uuid end
+ where id = $3
+`
+
+type SetGymVerifiedParams struct {
+	Verified bool          `json:"verified"`
+	By       uuid.NullUUID `json:"by"`
+	ID       uuid.UUID     `json:"id"`
+}
+
+func (q *Queries) SetGymVerified(ctx context.Context, arg SetGymVerifiedParams) error {
+	_, err := q.db.Exec(ctx, setGymVerified, arg.Verified, arg.By, arg.ID)
+	return err
+}
+
 const similarGyms = `-- name: SimilarGyms :many
 with q as (
     select btrim(lower(regexp_replace(replace(replace($2::text, '''', ''), '’', ''),
@@ -417,6 +577,15 @@ func (q *Queries) SimilarGyms(ctx context.Context, arg SimilarGymsParams) ([]Sim
 		return nil, err
 	}
 	return items, nil
+}
+
+const softDeleteGym = `-- name: SoftDeleteGym :exec
+update gyms set deleted_at = now() where id = $1 and deleted_at is null
+`
+
+func (q *Queries) SoftDeleteGym(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, softDeleteGym, id)
+	return err
 }
 
 const updateGym = `-- name: UpdateGym :exec

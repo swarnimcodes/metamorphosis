@@ -14,7 +14,7 @@ func TestPatchMeUpdatesPreferencesAndValidates(t *testing.T) {
 	me := ok(t, patch(t, "/me", u.Token, map[string]any{
 		"unit_system": "imperial", "timezone": "Asia/Kolkata", "display_name": "  Prefs P  ",
 	}))
-	eq(t, "field count", me.JSON.Len(), 7)
+	eq(t, "field count", me.JSON.Len(), 8)
 	str(t, "unit_system", me.Get("unit_system"), "imperial")
 	str(t, "timezone", me.Get("timezone"), "Asia/Kolkata")
 	str(t, "display_name", me.Get("display_name"), "Prefs P")
