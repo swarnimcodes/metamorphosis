@@ -7,37 +7,98 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
 
+const getGym = `-- name: GetGym :one
+select g.id, g.name, g.chain, g.area, g.address, g.city, g.lat, g.lng, g.maps_url, g.verified, g.country_code, g.state,
+       v.visits::int4 as visits, v.last_visit
+  from gyms g
+  left join lateral (
+      select count(*) as visits, coalesce(max(w.started_at), 'epoch'::timestamptz)::timestamptz as last_visit from workouts w
+       where w.gym_id = g.id and w.user_id = $1 and w.deleted_at is null
+  ) v on true
+ where g.id = $2 and g.deleted_at is null
+`
+
+type GetGymParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	ID     uuid.UUID `json:"id"`
+}
+
+type GetGymRow struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Chain       *string   `json:"chain"`
+	Area        *string   `json:"area"`
+	Address     *string   `json:"address"`
+	City        *string   `json:"city"`
+	Lat         *float64  `json:"lat"`
+	Lng         *float64  `json:"lng"`
+	MapsUrl     *string   `json:"maps_url"`
+	Verified    bool      `json:"verified"`
+	CountryCode *string   `json:"country_code"`
+	State       *string   `json:"state"`
+	Visits      int32     `json:"visits"`
+	LastVisit   time.Time `json:"last_visit"`
+}
+
+// One gym, with how often and when the caller last trained there. last_visit is the epoch when there were none.
+func (q *Queries) GetGym(ctx context.Context, arg GetGymParams) (GetGymRow, error) {
+	row := q.db.QueryRow(ctx, getGym, arg.UserID, arg.ID)
+	var i GetGymRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Chain,
+		&i.Area,
+		&i.Address,
+		&i.City,
+		&i.Lat,
+		&i.Lng,
+		&i.MapsUrl,
+		&i.Verified,
+		&i.CountryCode,
+		&i.State,
+		&i.Visits,
+		&i.LastVisit,
+	)
+	return i, err
+}
+
 const insertGym = `-- name: InsertGym :one
-insert into gyms (name, chain, area, address, city, maps_url, created_by)
-values ($1, $2, $3, $4, $5, $6, $7)
-returning id, name, chain, area, address, city, lat, lng, maps_url, verified
+insert into gyms (name, chain, area, address, city, state, country_code, maps_url, created_by)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+returning id, name, chain, area, address, city, lat, lng, maps_url, verified, country_code, state
 `
 
 type InsertGymParams struct {
-	Name      string        `json:"name"`
-	Chain     *string       `json:"chain"`
-	Area      *string       `json:"area"`
-	Address   *string       `json:"address"`
-	City      *string       `json:"city"`
-	MapsUrl   *string       `json:"maps_url"`
-	CreatedBy uuid.NullUUID `json:"created_by"`
+	Name        string        `json:"name"`
+	Chain       *string       `json:"chain"`
+	Area        *string       `json:"area"`
+	Address     *string       `json:"address"`
+	City        *string       `json:"city"`
+	State       *string       `json:"state"`
+	CountryCode *string       `json:"country_code"`
+	MapsUrl     *string       `json:"maps_url"`
+	CreatedBy   uuid.NullUUID `json:"created_by"`
 }
 
 type InsertGymRow struct {
-	ID       uuid.UUID `json:"id"`
-	Name     string    `json:"name"`
-	Chain    *string   `json:"chain"`
-	Area     *string   `json:"area"`
-	Address  *string   `json:"address"`
-	City     *string   `json:"city"`
-	Lat      *float64  `json:"lat"`
-	Lng      *float64  `json:"lng"`
-	MapsUrl  *string   `json:"maps_url"`
-	Verified bool      `json:"verified"`
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Chain       *string   `json:"chain"`
+	Area        *string   `json:"area"`
+	Address     *string   `json:"address"`
+	City        *string   `json:"city"`
+	Lat         *float64  `json:"lat"`
+	Lng         *float64  `json:"lng"`
+	MapsUrl     *string   `json:"maps_url"`
+	Verified    bool      `json:"verified"`
+	CountryCode *string   `json:"country_code"`
+	State       *string   `json:"state"`
 }
 
 func (q *Queries) InsertGym(ctx context.Context, arg InsertGymParams) (InsertGymRow, error) {
@@ -47,6 +108,8 @@ func (q *Queries) InsertGym(ctx context.Context, arg InsertGymParams) (InsertGym
 		arg.Area,
 		arg.Address,
 		arg.City,
+		arg.State,
+		arg.CountryCode,
 		arg.MapsUrl,
 		arg.CreatedBy,
 	)
@@ -62,6 +125,131 @@ func (q *Queries) InsertGym(ctx context.Context, arg InsertGymParams) (InsertGym
 		&i.Lng,
 		&i.MapsUrl,
 		&i.Verified,
+		&i.CountryCode,
+		&i.State,
+	)
+	return i, err
+}
+
+const insertGymEdit = `-- name: InsertGymEdit :exec
+insert into gym_edits (gym_id, user_id, changes) values ($1, $2, $3)
+`
+
+type InsertGymEditParams struct {
+	GymID   uuid.UUID     `json:"gym_id"`
+	UserID  uuid.NullUUID `json:"user_id"`
+	Changes []byte        `json:"changes"`
+}
+
+func (q *Queries) InsertGymEdit(ctx context.Context, arg InsertGymEditParams) error {
+	_, err := q.db.Exec(ctx, insertGymEdit, arg.GymID, arg.UserID, arg.Changes)
+	return err
+}
+
+const listGymChains = `-- name: ListGymChains :many
+select chain::text as chain from gyms
+ where chain is not null and deleted_at is null
+ group by chain order by count(*) desc, chain limit $1
+`
+
+// Chains already in the directory, most used first: the suggestions for the chain field.
+func (q *Queries) ListGymChains(ctx context.Context, maxRows int32) ([]string, error) {
+	rows, err := q.db.Query(ctx, listGymChains, maxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var chain string
+		if err := rows.Scan(&chain); err != nil {
+			return nil, err
+		}
+		items = append(items, chain)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGymEdits = `-- name: ListGymEdits :many
+select id, user_id, changes, created_at from gym_edits where gym_id = $1 order by created_at desc, id desc limit $2
+`
+
+type ListGymEditsParams struct {
+	GymID   uuid.UUID `json:"gym_id"`
+	MaxRows int32     `json:"max_rows"`
+}
+
+type ListGymEditsRow struct {
+	ID        uuid.UUID     `json:"id"`
+	UserID    uuid.NullUUID `json:"user_id"`
+	Changes   []byte        `json:"changes"`
+	CreatedAt time.Time     `json:"created_at"`
+}
+
+func (q *Queries) ListGymEdits(ctx context.Context, arg ListGymEditsParams) ([]ListGymEditsRow, error) {
+	rows, err := q.db.Query(ctx, listGymEdits, arg.GymID, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListGymEditsRow
+	for rows.Next() {
+		var i ListGymEditsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Changes,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockGym = `-- name: LockGym :one
+select id, name, chain, area, address, city, lat, lng, maps_url, verified, country_code, state
+  from gyms where id = $1 and deleted_at is null for update
+`
+
+type LockGymRow struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Chain       *string   `json:"chain"`
+	Area        *string   `json:"area"`
+	Address     *string   `json:"address"`
+	City        *string   `json:"city"`
+	Lat         *float64  `json:"lat"`
+	Lng         *float64  `json:"lng"`
+	MapsUrl     *string   `json:"maps_url"`
+	Verified    bool      `json:"verified"`
+	CountryCode *string   `json:"country_code"`
+	State       *string   `json:"state"`
+}
+
+func (q *Queries) LockGym(ctx context.Context, id uuid.UUID) (LockGymRow, error) {
+	row := q.db.QueryRow(ctx, lockGym, id)
+	var i LockGymRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Chain,
+		&i.Area,
+		&i.Address,
+		&i.City,
+		&i.Lat,
+		&i.Lng,
+		&i.MapsUrl,
+		&i.Verified,
+		&i.CountryCode,
+		&i.State,
 	)
 	return i, err
 }
@@ -71,7 +259,7 @@ with q as (
     select btrim(lower(regexp_replace(replace(replace($2::text, '''', ''), '’', ''),
                                       '[^[:alnum:]]+', ' ', 'g'))) as nq
 ), scored as (
-    select g.id, g.name, g.chain, g.area, g.address, g.city, g.lat, g.lng, g.maps_url, g.verified,
+    select g.id, g.name, g.chain, g.area, g.address, g.city, g.lat, g.lng, g.maps_url, g.verified, g.country_code, g.state,
            (select max(w.started_at) from workouts w
              where w.gym_id = g.id and w.user_id = $3 and w.deleted_at is null) as last_used,
            similarity(n.nname, q.nq) as score,
@@ -91,7 +279,7 @@ with q as (
      ) n
      where g.deleted_at is null
 )
-select id, name, chain, area, address, city, lat, lng, maps_url, verified
+select id, name, chain, area, address, city, lat, lng, maps_url, verified, country_code, state
   from scored, q
  where q.nq = '' or contains or score > 0.3
  order by (case when q.nq = '' then true else contains end) desc,
@@ -107,16 +295,18 @@ type SearchGymsParams struct {
 }
 
 type SearchGymsRow struct {
-	ID       uuid.UUID `json:"id"`
-	Name     string    `json:"name"`
-	Chain    *string   `json:"chain"`
-	Area     *string   `json:"area"`
-	Address  *string   `json:"address"`
-	City     *string   `json:"city"`
-	Lat      *float64  `json:"lat"`
-	Lng      *float64  `json:"lng"`
-	MapsUrl  *string   `json:"maps_url"`
-	Verified bool      `json:"verified"`
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Chain       *string   `json:"chain"`
+	Area        *string   `json:"area"`
+	Address     *string   `json:"address"`
+	City        *string   `json:"city"`
+	Lat         *float64  `json:"lat"`
+	Lng         *float64  `json:"lng"`
+	MapsUrl     *string   `json:"maps_url"`
+	Verified    bool      `json:"verified"`
+	CountryCode *string   `json:"country_code"`
+	State       *string   `json:"state"`
 }
 
 // Name search by trigram similarity or substring. Both sides are normalised (apostrophes dropped, punctuation
@@ -142,6 +332,8 @@ func (q *Queries) SearchGyms(ctx context.Context, arg SearchGymsParams) ([]Searc
 			&i.Lng,
 			&i.MapsUrl,
 			&i.Verified,
+			&i.CountryCode,
+			&i.State,
 		); err != nil {
 			return nil, err
 		}
@@ -158,14 +350,14 @@ with q as (
     select btrim(lower(regexp_replace(replace(replace($2::text, '''', ''), '’', ''),
                                       '[^[:alnum:]]+', ' ', 'g'))) as nq
 ), cand as (
-    select g.id, g.name, g.chain, g.area, g.address, g.city, g.lat, g.lng, g.maps_url, g.verified,
+    select g.id, g.name, g.chain, g.area, g.address, g.city, g.lat, g.lng, g.maps_url, g.verified, g.country_code, g.state,
            similarity(btrim(lower(regexp_replace(replace(replace(g.name, '''', ''), '’', ''),
                                                  '[^[:alnum:]]+', ' ', 'g'))), q.nq) as score
       from gyms g, q
      where g.deleted_at is null
        and ($3::text is null or lower(g.city) = lower($3))
 )
-select id, name, chain, area, address, city, lat, lng, maps_url, verified
+select id, name, chain, area, address, city, lat, lng, maps_url, verified, country_code, state
   from cand
  where score > 0.5
  order by score desc, name
@@ -179,16 +371,18 @@ type SimilarGymsParams struct {
 }
 
 type SimilarGymsRow struct {
-	ID       uuid.UUID `json:"id"`
-	Name     string    `json:"name"`
-	Chain    *string   `json:"chain"`
-	Area     *string   `json:"area"`
-	Address  *string   `json:"address"`
-	City     *string   `json:"city"`
-	Lat      *float64  `json:"lat"`
-	Lng      *float64  `json:"lng"`
-	MapsUrl  *string   `json:"maps_url"`
-	Verified bool      `json:"verified"`
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Chain       *string   `json:"chain"`
+	Area        *string   `json:"area"`
+	Address     *string   `json:"address"`
+	City        *string   `json:"city"`
+	Lat         *float64  `json:"lat"`
+	Lng         *float64  `json:"lng"`
+	MapsUrl     *string   `json:"maps_url"`
+	Verified    bool      `json:"verified"`
+	CountryCode *string   `json:"country_code"`
+	State       *string   `json:"state"`
 }
 
 // Gyms whose name is close to @name (in the same city when one is given): the near-duplicate guard's candidates.
@@ -212,6 +406,8 @@ func (q *Queries) SimilarGyms(ctx context.Context, arg SimilarGymsParams) ([]Sim
 			&i.Lng,
 			&i.MapsUrl,
 			&i.Verified,
+			&i.CountryCode,
+			&i.State,
 		); err != nil {
 			return nil, err
 		}
@@ -221,4 +417,37 @@ func (q *Queries) SimilarGyms(ctx context.Context, arg SimilarGymsParams) ([]Sim
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateGym = `-- name: UpdateGym :exec
+update gyms set name = $1, chain = $2, area = $3, address = $4, city = $5, state = $6,
+                country_code = $7, maps_url = $8
+ where id = $9
+`
+
+type UpdateGymParams struct {
+	Name        string    `json:"name"`
+	Chain       *string   `json:"chain"`
+	Area        *string   `json:"area"`
+	Address     *string   `json:"address"`
+	City        *string   `json:"city"`
+	State       *string   `json:"state"`
+	CountryCode *string   `json:"country_code"`
+	MapsUrl     *string   `json:"maps_url"`
+	ID          uuid.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateGym(ctx context.Context, arg UpdateGymParams) error {
+	_, err := q.db.Exec(ctx, updateGym,
+		arg.Name,
+		arg.Chain,
+		arg.Area,
+		arg.Address,
+		arg.City,
+		arg.State,
+		arg.CountryCode,
+		arg.MapsUrl,
+		arg.ID,
+	)
+	return err
 }

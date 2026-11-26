@@ -479,6 +479,17 @@ type Gym struct {
 	Area *string `json:"area"`
 	// Link to the place on a maps service. Stored and opened, never fetched or resolved by the server.
 	MapsUrl *string `json:"maps_url"`
+	// Region/state name, e.g. "Maharashtra". Free text; the app offers a list.
+	State *string `json:"state"`
+}
+
+// One row per saved edit of a gym: which fields changed, from what, to what, and by whom.
+type GymEdit struct {
+	ID        uuid.UUID     `json:"id"`
+	GymID     uuid.UUID     `json:"gym_id"`
+	UserID    uuid.NullUUID `json:"user_id"`
+	Changes   []byte        `json:"changes"`
+	CreatedAt time.Time     `json:"created_at"`
 }
 
 // Reference list of muscle groups (chest, lats, quads, ...).

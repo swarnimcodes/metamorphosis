@@ -168,16 +168,26 @@ type GoogleSignupRequired struct {
 
 // Gym defines model for Gym.
 type Gym struct {
-	Address  *string            `json:"address"`
-	Area     *string            `json:"area"`
-	Chain    *string            `json:"chain"`
-	City     *string            `json:"city"`
-	Id       openapi_types.UUID `json:"id"`
-	Lat      *float64           `json:"lat"`
-	Lng      *float64           `json:"lng"`
-	MapsUrl  *string            `json:"maps_url"`
-	Name     string             `json:"name"`
-	Verified bool               `json:"verified"`
+	Address *string `json:"address"`
+	Area    *string `json:"area"`
+	Chain   *string `json:"chain"`
+	City    *string `json:"city"`
+
+	// CountryCode ISO 3166-1 alpha-2, upper case.
+	CountryCode *string            `json:"country_code"`
+	Id          openapi_types.UUID `json:"id"`
+	Lat         *float64           `json:"lat"`
+	Lng         *float64           `json:"lng"`
+	MapsUrl     *string            `json:"maps_url"`
+	Name        string             `json:"name"`
+	State       *string            `json:"state"`
+	Verified    bool               `json:"verified"`
+}
+
+// GymChange defines model for GymChange.
+type GymChange struct {
+	From *string `json:"from"`
+	To   *string `json:"to"`
 }
 
 // GymCreate defines model for GymCreate.
@@ -187,16 +197,55 @@ type GymCreate struct {
 	Chain   *string `json:"chain,omitempty"`
 	City    *string `json:"city,omitempty"`
 
+	// CountryCode ISO 3166-1 alpha-2.
+	CountryCode *string `json:"country_code,omitempty"`
+
 	// Force Create even if a similar gym exists.
 	Force   *bool   `json:"force,omitempty"`
 	MapsUrl *string `json:"maps_url,omitempty"`
 	Name    string  `json:"name"`
+	State   *string `json:"state,omitempty"`
+}
+
+// GymDetail defines model for GymDetail.
+type GymDetail struct {
+	// Editable False for verified gyms.
+	Editable  bool       `json:"editable"`
+	Gym       Gym        `json:"gym"`
+	LastVisit *time.Time `json:"last_visit"`
+
+	// Visits The caller's workouts logged at this gym.
+	Visits int32 `json:"visits"`
+}
+
+// GymEdit defines model for GymEdit.
+type GymEdit struct {
+	At time.Time `json:"at"`
+
+	// ByMe Editors are never named: it is the caller or someone else.
+	ByMe    bool                 `json:"by_me"`
+	Changes map[string]GymChange `json:"changes"`
+	Id      openapi_types.UUID   `json:"id"`
 }
 
 // GymSimilarConflict defines model for GymSimilarConflict.
 type GymSimilarConflict struct {
 	Error   string `json:"error"`
 	Similar []Gym  `json:"similar"`
+}
+
+// GymUpdate Omitted fields are unchanged; a blank string clears an optional field.
+type GymUpdate struct {
+	Address *string `json:"address,omitempty"`
+	Area    *string `json:"area,omitempty"`
+	Chain   *string `json:"chain,omitempty"`
+	City    *string `json:"city,omitempty"`
+
+	// CountryCode ISO 3166-1 alpha-2.
+	CountryCode *string `json:"country_code,omitempty"`
+	MapsUrl     *string `json:"maps_url,omitempty"`
+	Name        *string `json:"name,omitempty"`
+	State       *string `json:"state,omitempty"`
 }
 
 // LoginResponse defines model for LoginResponse.
@@ -584,6 +633,9 @@ type SetBodyWeightJSONRequestBody SetBodyWeightJSONBody
 // CreateGymJSONRequestBody defines body for CreateGym for application/json ContentType.
 type CreateGymJSONRequestBody = GymCreate
 
+// UpdateGymJSONRequestBody defines body for UpdateGym for application/json ContentType.
+type UpdateGymJSONRequestBody = GymUpdate
+
 // DeleteMeJSONRequestBody defines body for DeleteMe for application/json ContentType.
 type DeleteMeJSONRequestBody = MeDelete
 
@@ -711,6 +763,18 @@ type ServerInterface interface {
 	// CreateGym Adds a gym to the shared directory.
 	// (POST /gyms)
 	CreateGym(w http.ResponseWriter, r *http.Request)
+	// ListGymChains Chain names already in the directory, most used first (at most 100), for suggestions.
+	// (GET /gyms/chains)
+	ListGymChains(w http.ResponseWriter, r *http.Request)
+	// GetGym One gym, with the caller's visits to it.
+	// (GET /gyms/{id})
+	GetGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// UpdateGym Edits a gym that is not verified.
+	// (PATCH /gyms/{id})
+	UpdateGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// GetGymHistory The gym's edits, newest first (at most 50).
+	// (GET /gyms/{id}/history)
+	GetGymHistory(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// DeleteMe Permanently deletes the account and everything it owns.
 	// (DELETE /me)
 	DeleteMe(w http.ResponseWriter, r *http.Request)
@@ -842,6 +906,30 @@ func (_ Unimplemented) SearchGyms(w http.ResponseWriter, r *http.Request, params
 // CreateGym Adds a gym to the shared directory.
 // (POST /gyms)
 func (_ Unimplemented) CreateGym(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListGymChains Chain names already in the directory, most used first (at most 100), for suggestions.
+// (GET /gyms/chains)
+func (_ Unimplemented) ListGymChains(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetGym One gym, with the caller's visits to it.
+// (GET /gyms/{id})
+func (_ Unimplemented) GetGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateGym Edits a gym that is not verified.
+// (PATCH /gyms/{id})
+func (_ Unimplemented) UpdateGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetGymHistory The gym's edits, newest first (at most 50).
+// (GET /gyms/{id}/history)
+func (_ Unimplemented) GetGymHistory(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1399,6 +1487,98 @@ func (siw *ServerInterfaceWrapper) CreateGym(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateGym(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListGymChains operation middleware
+func (siw *ServerInterfaceWrapper) ListGymChains(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListGymChains(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGym operation middleware
+func (siw *ServerInterfaceWrapper) GetGym(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGym(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateGym operation middleware
+func (siw *ServerInterfaceWrapper) UpdateGym(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateGym(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGymHistory operation middleware
+func (siw *ServerInterfaceWrapper) GetGymHistory(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGymHistory(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2024,6 +2204,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/gyms", wrapper.CreateGym)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/gyms/chains", wrapper.ListGymChains)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/gyms/{id}", wrapper.GetGym)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/gyms/{id}", wrapper.UpdateGym)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/gyms/{id}/history", wrapper.GetGymHistory)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/exercises", wrapper.SearchExercises)
@@ -2769,6 +2961,234 @@ func (response CreateGym409JSONResponse) VisitCreateGymResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListGymChainsRequestObject struct {
+}
+
+type ListGymChainsResponseObject interface {
+	VisitListGymChainsResponse(w http.ResponseWriter) error
+}
+
+type ListGymChains200JSONResponse []string
+
+func (response ListGymChains200JSONResponse) VisitListGymChainsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListGymChains401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListGymChains401JSONResponse) VisitListGymChainsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGymRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type GetGymResponseObject interface {
+	VisitGetGymResponse(w http.ResponseWriter) error
+}
+
+type GetGym200JSONResponse GymDetail
+
+func (response GetGym200JSONResponse) VisitGetGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGym400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetGym400JSONResponse) VisitGetGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGym401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetGym401JSONResponse) VisitGetGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGym404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetGym404JSONResponse) VisitGetGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGymRequestObject struct {
+	Id   openapi_types.UUID `json:"id"`
+	Body *UpdateGymJSONRequestBody
+}
+
+type UpdateGymResponseObject interface {
+	VisitUpdateGymResponse(w http.ResponseWriter) error
+}
+
+type UpdateGym200JSONResponse Gym
+
+func (response UpdateGym200JSONResponse) VisitUpdateGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGym400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateGym400JSONResponse) VisitUpdateGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGym401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateGym401JSONResponse) VisitUpdateGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGym404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateGym404JSONResponse) VisitUpdateGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGymHistoryRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type GetGymHistoryResponseObject interface {
+	VisitGetGymHistoryResponse(w http.ResponseWriter) error
+}
+
+type GetGymHistory200JSONResponse []GymEdit
+
+func (response GetGymHistory200JSONResponse) VisitGetGymHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGymHistory400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetGymHistory400JSONResponse) VisitGetGymHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGymHistory401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetGymHistory401JSONResponse) VisitGetGymHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGymHistory404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetGymHistory404JSONResponse) VisitGetGymHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -3847,6 +4267,18 @@ type StrictServerInterface interface {
 	// CreateGym Adds a gym to the shared directory.
 	// (POST /gyms)
 	CreateGym(ctx context.Context, request CreateGymRequestObject) (CreateGymResponseObject, error)
+	// ListGymChains Chain names already in the directory, most used first (at most 100), for suggestions.
+	// (GET /gyms/chains)
+	ListGymChains(ctx context.Context, request ListGymChainsRequestObject) (ListGymChainsResponseObject, error)
+	// GetGym One gym, with the caller's visits to it.
+	// (GET /gyms/{id})
+	GetGym(ctx context.Context, request GetGymRequestObject) (GetGymResponseObject, error)
+	// UpdateGym Edits a gym that is not verified.
+	// (PATCH /gyms/{id})
+	UpdateGym(ctx context.Context, request UpdateGymRequestObject) (UpdateGymResponseObject, error)
+	// GetGymHistory The gym's edits, newest first (at most 50).
+	// (GET /gyms/{id}/history)
+	GetGymHistory(ctx context.Context, request GetGymHistoryRequestObject) (GetGymHistoryResponseObject, error)
 	// DeleteMe Permanently deletes the account and everything it owns.
 	// (DELETE /me)
 	DeleteMe(ctx context.Context, request DeleteMeRequestObject) (DeleteMeResponseObject, error)
@@ -4291,6 +4723,115 @@ func (sh *strictHandler) CreateGym(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateGymResponseObject); ok {
 		if err := validResponse.VisitCreateGymResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListGymChains operation middleware
+func (sh *strictHandler) ListGymChains(w http.ResponseWriter, r *http.Request) {
+	var request ListGymChainsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListGymChains(ctx, request.(ListGymChainsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListGymChains")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListGymChainsResponseObject); ok {
+		if err := validResponse.VisitListGymChainsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetGym operation middleware
+func (sh *strictHandler) GetGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request GetGymRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetGym(ctx, request.(GetGymRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetGym")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetGymResponseObject); ok {
+		if err := validResponse.VisitGetGymResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateGym operation middleware
+func (sh *strictHandler) UpdateGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request UpdateGymRequestObject
+
+	request.Id = id
+
+	var body UpdateGymJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateGym(ctx, request.(UpdateGymRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateGym")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateGymResponseObject); ok {
+		if err := validResponse.VisitUpdateGymResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetGymHistory operation middleware
+func (sh *strictHandler) GetGymHistory(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request GetGymHistoryRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetGymHistory(ctx, request.(GetGymHistoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetGymHistory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetGymHistoryResponseObject); ok {
+		if err := validResponse.VisitGetGymHistoryResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

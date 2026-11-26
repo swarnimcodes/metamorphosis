@@ -14,8 +14,8 @@ func createGym(t *testing.T, token string, body any) Resp {
 
 func assertGymShape(t *testing.T, g Val) {
 	t.Helper()
-	eq(t, "gym field count", g.Len(), 10)
-	for _, k := range []string{"id", "name", "chain", "area", "address", "city", "lat", "lng", "maps_url", "verified"} {
+	eq(t, "gym field count", g.Len(), 12)
+	for _, k := range []string{"id", "name", "chain", "area", "address", "city", "lat", "lng", "maps_url", "verified", "country_code", "state"} {
 		isTrue(t, "gym has "+k, g.Has(k))
 	}
 	isTrue(t, "id is a uuid", uuidish(g.Get("id").Str()))
@@ -353,4 +353,77 @@ func TestGymDuplicateGuardListsAtMostTenSimilarGyms(t *testing.T) {
 	r := createGym(t, a.Token, map[string]any{"name": "Golds Gym Aundh " + tok, "city": city})
 	status(t, r, 409)
 	arrayLen(t, "similar is capped", r.Get("similar"), 10)
+}
+
+func TestGymEditDetailAndHistory(t *testing.T) {
+	t.Parallel()
+	a, b := newUser(t, "gymeditor"), newUser(t, "gymviewer")
+	city := "Cty" + randLetters(8)
+	g := created(t, createGym(t, a.Token, map[string]any{
+		"name": "Edit Gym " + randLetters(10), "city": city, "state": "Maharashtra", "country_code": "in",
+	}))
+	assertGymShape(t, g.JSON)
+	str(t, "country upper-cased", g.Get("country_code"), "IN")
+	str(t, "state", g.Get("state"), "Maharashtra")
+	id := g.Get("id").Str()
+
+	// Anyone may edit an unverified gym, and only what was sent changes.
+	e := ok(t, patch(t, "/gyms/"+id, b.Token, map[string]any{"city": city + " City", "chain": "Chainy", "state": ""}))
+	assertGymShape(t, e.JSON)
+	str(t, "city changed", e.Get("city"), city+" City")
+	str(t, "chain set", e.Get("chain"), "Chainy")
+	null(t, "state cleared", e.Get("state"))
+	str(t, "country untouched", e.Get("country_code"), "IN")
+
+	// A change that alters nothing is not recorded.
+	ok(t, patch(t, "/gyms/"+id, b.Token, map[string]any{"chain": "Chainy"}))
+
+	h := ok(t, get(t, "/gyms/"+id+"/history", a.Token)).JSON
+	eq(t, "one recorded edit", h.Len(), 1)
+	edit := h.Idx(0)
+	eq(t, "the creator did not make it", edit.Get("by_me").Bool(), false)
+	eq(t, "three fields", edit.Get("changes").Len(), 3)
+	str(t, "city from", edit.Get("changes").Get("city").Get("from"), city)
+	str(t, "city to", edit.Get("changes").Get("city").Get("to"), city+" City")
+	null(t, "state to", edit.Get("changes").Get("state").Get("to"))
+	eq(t, "the editor sees it as theirs", ok(t, get(t, "/gyms/"+id+"/history", b.Token)).JSON.Idx(0).Get("by_me").Bool(), true)
+
+	d := ok(t, get(t, "/gyms/"+id, b.Token))
+	eq(t, "detail field count", d.JSON.Len(), 4)
+	assertGymShape(t, d.Get("gym"))
+	num(t, "no visits yet", d.Get("visits"), 0)
+	null(t, "no last visit", d.Get("last_visit"))
+	eq(t, "editable", d.Get("editable").Bool(), true)
+	created(t, post(t, "/workouts", b.Token, map[string]any{"gym_id": id}))
+	num(t, "one visit", ok(t, get(t, "/gyms/"+id, b.Token)).Get("visits"), 1)
+	num(t, "visits are the caller's own", ok(t, get(t, "/gyms/"+id, a.Token)).Get("visits"), 0)
+
+	errBody(t, patch(t, "/gyms/"+id, a.Token, map[string]any{"name": " "}), 400, "name must not be empty", "")
+	errBody(t, patch(t, "/gyms/"+id, a.Token, map[string]any{"country_code": "IND"}), 400, "", "")
+	errBody(t, patch(t, "/gyms/"+id, a.Token, map[string]any{"maps_url": "https://evil.example/x"}), 400, "", "")
+	status(t, get(t, "/gyms/00000000-0000-0000-0000-000000000000", a.Token), 404)
+	status(t, patch(t, "/gyms/00000000-0000-0000-0000-000000000000", a.Token, map[string]any{"city": "X"}), 404)
+	unauthorized(t, get(t, "/gyms/"+id, ""))
+	unauthorized(t, patch(t, "/gyms/"+id, "", map[string]any{"city": "X"}))
+
+	// The seeded gyms are verified and locked.
+	seeded := ok(t, get(t, "/gyms?q=cult+kalyani", a.Token)).JSON.Idx(0).Get("id").Str()
+	eq(t, "seeded gym is not editable", ok(t, get(t, "/gyms/"+seeded, a.Token)).Get("editable").Bool(), false)
+	errBody(t, patch(t, "/gyms/"+seeded, a.Token, map[string]any{"city": "Hacked"}), 400, "verified gyms can't be edited", "gym_locked")
+}
+
+func TestGymChainsListsUsedChains(t *testing.T) {
+	t.Parallel()
+	u := newUser(t, "chainlister")
+	chain := "Chn" + randLetters(10)
+	for i := 0; i < 2; i++ {
+		created(t, createGym(t, u.Token, map[string]any{"name": "Chain Gym " + randLetters(10), "chain": chain, "force": true}))
+	}
+	list := ok(t, get(t, "/gyms/chains", u.Token)).JSON
+	var names []string
+	for _, e := range list.Arr() {
+		names = append(names, e.Str())
+	}
+	isTrue(t, "the chain is offered", contains(names, chain))
+	unauthorized(t, get(t, "/gyms/chains", ""))
 }

@@ -245,6 +245,71 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/GymSimilarConflict" }
+  /gyms/chains:
+    get:
+      operationId: listGymChains
+      tags: [gyms]
+      summary: Chain names already in the directory, most used first (at most 100), for suggestions.
+      responses:
+        "200":
+          description: Chain names.
+          content:
+            application/json:
+              schema: { type: array, items: { type: string } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /gyms/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getGym
+      tags: [gyms]
+      summary: One gym, with the caller's visits to it.
+      responses:
+        "200":
+          description: The gym.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GymDetail" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      operationId: updateGym
+      tags: [gyms]
+      summary: Edits a gym that is not verified.
+      description: |
+        Anyone may edit; every change is recorded in the gym's history. Verified gyms answer 400 `gym_locked`. A
+        change that alters nothing is not recorded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GymUpdate" }
+      responses:
+        "200":
+          description: The gym after the edit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Gym" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /gyms/{id}/history:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getGymHistory
+      tags: [gyms]
+      summary: The gym's edits, newest first (at most 50).
+      responses:
+        "200":
+          description: Edits.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/GymEdit" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
   # <<< gyms
   # >>> exercises
   /exercises:
@@ -673,7 +738,7 @@ components:
     # >>> gyms
     Gym:
       type: object
-      required: [id, name, chain, area, address, city, lat, lng, maps_url, verified]
+      required: [id, name, chain, area, address, city, lat, lng, maps_url, verified, country_code, state]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -685,6 +750,8 @@ components:
         lng: { type: number, format: double, nullable: true }
         maps_url: { type: string, nullable: true }
         verified: { type: boolean }
+        country_code: { type: string, nullable: true, description: "ISO 3166-1 alpha-2, upper case." }
+        state: { type: string, nullable: true }
     GymCreate:
       type: object
       required: [name]
@@ -694,8 +761,44 @@ components:
         area: { type: string }
         address: { type: string }
         city: { type: string }
+        state: { type: string }
+        country_code: { type: string, description: "ISO 3166-1 alpha-2." }
         maps_url: { type: string }
         force: { type: boolean, description: Create even if a similar gym exists. }
+    GymUpdate:
+      type: object
+      description: Omitted fields are unchanged; a blank string clears an optional field.
+      properties:
+        name: { type: string }
+        chain: { type: string }
+        area: { type: string }
+        address: { type: string }
+        city: { type: string }
+        state: { type: string }
+        country_code: { type: string, description: "ISO 3166-1 alpha-2." }
+        maps_url: { type: string }
+    GymDetail:
+      type: object
+      required: [gym, visits, last_visit, editable]
+      properties:
+        gym: { $ref: "#/components/schemas/Gym" }
+        visits: { type: integer, format: int32, description: "The caller's workouts logged at this gym." }
+        last_visit: { type: string, format: date-time, nullable: true }
+        editable: { type: boolean, description: "False for verified gyms." }
+    GymChange:
+      type: object
+      required: [from, to]
+      properties:
+        from: { type: string, nullable: true }
+        to: { type: string, nullable: true }
+    GymEdit:
+      type: object
+      required: [id, by_me, at, changes]
+      properties:
+        id: { type: string, format: uuid }
+        by_me: { type: boolean, description: "Editors are never named: it is the caller or someone else." }
+        at: { type: string, format: date-time }
+        changes: { type: object, additionalProperties: { $ref: "#/components/schemas/GymChange" } }
     GymSimilarConflict:
       type: object
       required: [error, similar]
