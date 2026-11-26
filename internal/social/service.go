@@ -332,20 +332,28 @@ func (s *Service) Accept(ctx context.Context, viewer, from uuid.UUID) (string, e
 	return RelFriends, nil
 }
 
-// Remove cancels a request the caller sent, declines one they received, or unfriends: whichever applies.
-func (s *Service) Remove(ctx context.Context, viewer, other uuid.UUID) (string, error) {
+// Remove cancels a request the caller sent, declines one they received, or unfriends: whichever applies. With
+// pendingOnly it refuses to end an accepted friendship, so a "cancel" on a screen that is out of date can't silently
+// unfriend someone.
+func (s *Service) Remove(ctx context.Context, viewer, other uuid.UUID, pendingOnly bool) (string, error) {
 	err := s.tx(ctx, func(st Store) error {
-		n, err := st.DeleteFriendship(ctx, db.DeleteFriendshipParams{A: viewer, B: other})
+		row, err := st.LockFriendship(ctx, db.LockFriendshipParams{A: viewer, B: other})
 		if err != nil {
+			return notFound(err)
+		}
+		if pendingOnly && row.Status == "accepted" {
+			return domain.Conflict("already_friends", "you're already friends; refresh to see")
+		}
+		if _, err := st.DeleteFriendship(ctx, db.DeleteFriendshipParams{A: viewer, B: other}); err != nil {
 			return err
 		}
-		if n == 0 {
-			return domain.NotFound()
-		}
-		// A request that no longer exists should not linger in anyone's notifications.
+		// Nothing that happened between two people who are no longer connected should linger in anyone's
+		// notifications: not the request, and not the "accepted" that followed it.
 		for _, p := range [][2]uuid.UUID{{viewer, other}, {other, viewer}} {
-			if err := st.DeleteNotification(ctx, db.DeleteNotificationParams{UserID: p[0], Kind: NoteFriendRequest, ActorID: p[1]}); err != nil {
-				return err
+			for _, kind := range []string{NoteFriendRequest, NoteFriendAccepted} {
+				if err := st.DeleteNotification(ctx, db.DeleteNotificationParams{UserID: p[0], Kind: kind, ActorID: p[1]}); err != nil {
+					return err
+				}
 			}
 		}
 		return nil

@@ -1060,6 +1060,11 @@ type SearchPeopleParams struct {
 	Q string `form:"q" json:"q"`
 }
 
+// RemoveFriendshipParams defines parameters for RemoveFriendship.
+type RemoveFriendshipParams struct {
+	PendingOnly *bool `form:"pending_only,omitempty" json:"pending_only,omitempty"`
+}
+
 // ListPersonWorkoutsParams defines parameters for ListPersonWorkouts.
 type ListPersonWorkoutsParams struct {
 	Limit  *int64     `form:"limit,omitempty" json:"limit,omitempty"`
@@ -1330,7 +1335,7 @@ type ServerInterface interface {
 	SendFriendRequest(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// RemoveFriendship Cancels a request you sent, declines one you received, or unfriends.
 	// (DELETE /people/{id}/friendship)
-	RemoveFriendship(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	RemoveFriendship(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params RemoveFriendshipParams)
 	// ListPersonWorkouts A friend's workouts, newest first.
 	// (GET /people/{id}/workouts)
 	ListPersonWorkouts(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params ListPersonWorkoutsParams)
@@ -1629,7 +1634,7 @@ func (_ Unimplemented) SendFriendRequest(w http.ResponseWriter, r *http.Request,
 
 // RemoveFriendship Cancels a request you sent, declines one you received, or unfriends.
 // (DELETE /people/{id}/friendship)
-func (_ Unimplemented) RemoveFriendship(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+func (_ Unimplemented) RemoveFriendship(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params RemoveFriendshipParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2820,8 +2825,24 @@ func (siw *ServerInterfaceWrapper) RemoveFriendship(w http.ResponseWriter, r *ht
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RemoveFriendshipParams
+
+	// ------------- Optional query parameter "pending_only" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "pending_only", r.URL.Query(), &params.PendingOnly, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "pending_only"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "pending_only", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RemoveFriendship(w, r, id)
+		siw.Handler.RemoveFriendship(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5938,7 +5959,8 @@ func (response SendFriendRequest429JSONResponse) VisitSendFriendRequestResponse(
 }
 
 type RemoveFriendshipRequestObject struct {
-	Id openapi_types.UUID `json:"id"`
+	Id     openapi_types.UUID `json:"id"`
+	Params RemoveFriendshipParams
 }
 
 type RemoveFriendshipResponseObject interface {
@@ -5997,6 +6019,20 @@ func (response RemoveFriendship404JSONResponse) VisitRemoveFriendshipResponse(w 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveFriendship409JSONResponse Error
+
+func (response RemoveFriendship409JSONResponse) VisitRemoveFriendshipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8631,10 +8667,11 @@ func (sh *strictHandler) SendFriendRequest(w http.ResponseWriter, r *http.Reques
 }
 
 // RemoveFriendship operation middleware
-func (sh *strictHandler) RemoveFriendship(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+func (sh *strictHandler) RemoveFriendship(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params RemoveFriendshipParams) {
 	var request RemoveFriendshipRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.RemoveFriendship(ctx, request.(RemoveFriendshipRequestObject))

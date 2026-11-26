@@ -539,6 +539,9 @@ paths:
       operationId: removeFriendship
       tags: [social]
       summary: Cancels a request you sent, declines one you received, or unfriends.
+      description: "With `pending_only=true` an accepted friendship is left alone and the answer is 409 `already_friends`: use it for Cancel and Decline, so a stale screen can't unfriend. Without it this also unfriends."
+      parameters:
+        - { name: pending_only, in: query, required: false, schema: { type: boolean } }
       responses:
         "200":
           description: OK.
@@ -548,6 +551,9 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: It is already an accepted friendship (only with pending_only).
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   /people/{id}/block:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }

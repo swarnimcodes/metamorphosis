@@ -123,6 +123,27 @@ func TestCancelDeclineAndUnfriend(t *testing.T) {
 	ok(t, del(t, "/people/"+a.ID+"/friendship", b.Token))
 	emptyArray(t, "no longer friends", ok(t, get(t, "/friends", a.Token)).JSON)
 	str(t, "strangers again", ok(t, get(t, "/people/"+b.ID, a.Token)).Get("relationship"), "none")
+	// The "accepted" that came with the friendship goes with it.
+	emptyArray(t, "no stale 'accepted' notification", ok(t, get(t, "/notifications", a.Token)).Get("items"))
+}
+
+func TestCancelNeverUnfriendsOnAStaleScreen(t *testing.T) {
+	t.Parallel()
+	a, b := newUser(t, "stalea"), newUser(t, "staleb")
+	ok(t, post(t, "/people/"+b.ID+"/friend-request", a.Token, map[string]any{}))
+	// b accepts while a's screen still says "Request sent"; a then presses Cancel.
+	ok(t, post(t, "/people/"+a.ID+"/accept", b.Token, map[string]any{}))
+	errBody(t, del(t, "/people/"+b.ID+"/friendship?pending_only=true", a.Token), 409, "you're already friends; refresh to see", "already_friends")
+	str(t, "still friends", ok(t, get(t, "/people/"+b.ID, a.Token)).Get("relationship"), "friends")
+	sameStrings(t, "and still told", kinds(ok(t, get(t, "/notifications", a.Token)).Get("items")), []string{"friend_accepted"})
+	// Cancelling a request that is still pending works, and so does declining one.
+	c := newUser(t, "stalec")
+	ok(t, post(t, "/people/"+c.ID+"/friend-request", a.Token, map[string]any{}))
+	str(t, "cancelled", ok(t, del(t, "/people/"+c.ID+"/friendship?pending_only=true", a.Token)).Get("relationship"), "none")
+	status(t, del(t, "/people/"+c.ID+"/friendship?pending_only=true", a.Token), 404)
+	// Unfriending on purpose (no pending_only) still works.
+	ok(t, del(t, "/people/"+b.ID+"/friendship", a.Token))
+	str(t, "unfriended", ok(t, get(t, "/people/"+b.ID, a.Token)).Get("relationship"), "none")
 }
 
 func TestFriendsSeeWorkoutsButNotNotesAndStrangersSeeNothing(t *testing.T) {

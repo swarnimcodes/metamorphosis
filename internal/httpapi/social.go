@@ -147,7 +147,7 @@ func (a socialAPI) AcceptFriendRequest(ctx context.Context, req gen.AcceptFriend
 }
 
 func (a socialAPI) RemoveFriendship(ctx context.Context, req gen.RemoveFriendshipRequestObject) (gen.RemoveFriendshipResponseObject, error) {
-	rel, err := a.soc.Remove(ctx, userFrom(ctx), req.Id)
+	rel, err := a.soc.Remove(ctx, userFrom(ctx), req.Id, req.Params.PendingOnly != nil && *req.Params.PendingOnly)
 	if err != nil {
 		return nil, err
 	}
