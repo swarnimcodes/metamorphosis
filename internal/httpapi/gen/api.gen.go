@@ -19,6 +19,27 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AdminUserRole.
+const (
+	AdminUserRoleAdmin     AdminUserRole = "admin"
+	AdminUserRoleModerator AdminUserRole = "moderator"
+	AdminUserRoleUser      AdminUserRole = "user"
+)
+
+// Valid indicates whether the value is a known member of the AdminUserRole enum.
+func (e AdminUserRole) Valid() bool {
+	switch e {
+	case AdminUserRoleAdmin:
+		return true
+	case AdminUserRoleModerator:
+		return true
+	case AdminUserRoleUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GymEditKind.
 const (
 	GymEditKindDelete   GymEditKind = "delete"
@@ -199,6 +220,24 @@ func (e ReportStatus) Valid() bool {
 	}
 }
 
+// Defines values for RoleChangeRole.
+const (
+	RoleChangeRoleModerator RoleChangeRole = "moderator"
+	RoleChangeRoleUser      RoleChangeRole = "user"
+)
+
+// Valid indicates whether the value is a known member of the RoleChangeRole enum.
+func (e RoleChangeRole) Valid() bool {
+	switch e {
+	case RoleChangeRoleModerator:
+		return true
+	case RoleChangeRoleUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WorkoutSetType.
 const (
 	WorkoutSetTypeDrop    WorkoutSetType = "drop"
@@ -223,6 +262,24 @@ func (e WorkoutSetType) Valid() bool {
 	}
 }
 
+// Defines values for ListAdminUsersParamsFilter.
+const (
+	ListAdminUsersParamsFilterAll   ListAdminUsersParamsFilter = "all"
+	ListAdminUsersParamsFilterStaff ListAdminUsersParamsFilter = "staff"
+)
+
+// Valid indicates whether the value is a known member of the ListAdminUsersParamsFilter enum.
+func (e ListAdminUsersParamsFilter) Valid() bool {
+	switch e {
+	case ListAdminUsersParamsFilterAll:
+		return true
+	case ListAdminUsersParamsFilterStaff:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListReportsParamsStatus.
 const (
 	ListReportsParamsStatusOpen     ListReportsParamsStatus = "open"
@@ -240,6 +297,18 @@ func (e ListReportsParamsStatus) Valid() bool {
 		return false
 	}
 }
+
+// AdminUser defines model for AdminUser.
+type AdminUser struct {
+	DisplayName string             `json:"display_name"`
+	Id          openapi_types.UUID `json:"id"`
+	MemberSince time.Time          `json:"member_since"`
+	Role        AdminUserRole      `json:"role"`
+	Username    string             `json:"username"`
+}
+
+// AdminUserRole defines model for AdminUser.Role.
+type AdminUserRole string
 
 // AuthDevLoginRequest defines model for AuthDevLoginRequest.
 type AuthDevLoginRequest struct {
@@ -699,6 +768,14 @@ type ReportPerson struct {
 	Username    string             `json:"username"`
 }
 
+// RoleChange defines model for RoleChange.
+type RoleChange struct {
+	Role RoleChangeRole `json:"role"`
+}
+
+// RoleChangeRole defines model for RoleChange.Role.
+type RoleChangeRole string
+
 // StatsLoggedExercise defines model for StatsLoggedExercise.
 type StatsLoggedExercise struct {
 	ExerciseId    openapi_types.UUID `json:"exercise_id"`
@@ -906,6 +983,15 @@ type TooManyRequests = Error
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
 
+// ListAdminUsersParams defines parameters for ListAdminUsers.
+type ListAdminUsersParams struct {
+	Q      *string                     `form:"q,omitempty" json:"q,omitempty"`
+	Filter *ListAdminUsersParamsFilter `form:"filter,omitempty" json:"filter,omitempty"`
+}
+
+// ListAdminUsersParamsFilter defines parameters for ListAdminUsers.
+type ListAdminUsersParamsFilter string
+
 // DevLoginParams defines parameters for DevLogin.
 type DevLoginParams struct {
 	UserAgent *string `json:"User-Agent,omitempty"`
@@ -1006,6 +1092,9 @@ type ListWorkoutsParams struct {
 
 // FinishWorkoutJSONBody defines parameters for FinishWorkout.
 type FinishWorkoutJSONBody = map[string]interface{}
+
+// SetUserRoleJSONRequestBody defines body for SetUserRole for application/json ContentType.
+type SetUserRoleJSONRequestBody = RoleChange
 
 // DevLoginJSONRequestBody defines body for DevLogin for application/json ContentType.
 type DevLoginJSONRequestBody = AuthDevLoginRequest
@@ -1128,6 +1217,12 @@ func (t *GoogleSignIn200JSONResponseBody) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ListAdminUsers People, for the role screen (admins only).
+	// (GET /admin/users)
+	ListAdminUsers(w http.ResponseWriter, r *http.Request, params ListAdminUsersParams)
+	// SetUserRole Makes someone a moderator, or an ordinary user again (admins only).
+	// (PUT /admin/users/{id}/role)
+	SetUserRole(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// DevLogin Development sign-in that creates the user on first use. Answers 404 unless DEV_LOGIN is on.
 	// (POST /auth/dev-login)
 	DevLogin(w http.ResponseWriter, r *http.Request, params DevLoginParams)
@@ -1310,6 +1405,18 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// ListAdminUsers People, for the role screen (admins only).
+// (GET /admin/users)
+func (_ Unimplemented) ListAdminUsers(w http.ResponseWriter, r *http.Request, params ListAdminUsersParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SetUserRole Makes someone a moderator, or an ordinary user again (admins only).
+// (PUT /admin/users/{id}/role)
+func (_ Unimplemented) SetUserRole(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // DevLogin Development sign-in that creates the user on first use. Answers 404 unless DEV_LOGIN is on.
 // (POST /auth/dev-login)
@@ -1669,6 +1776,78 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListAdminUsers operation middleware
+func (siw *ServerInterfaceWrapper) ListAdminUsers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAdminUsersParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "filter" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "filter", r.URL.Query(), &params.Filter, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "filter"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAdminUsers(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetUserRole operation middleware
+func (siw *ServerInterfaceWrapper) SetUserRole(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetUserRole(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // DevLogin operation middleware
 func (siw *ServerInterfaceWrapper) DevLogin(w http.ResponseWriter, r *http.Request) {
@@ -3545,6 +3724,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/reports/{id}/resolve", wrapper.ResolveReport)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/admin/users", wrapper.ListAdminUsers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/admin/users/{id}/role", wrapper.SetUserRole)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/exercises", wrapper.SearchExercises)
 	})
 	r.Group(func(r chi.Router) {
@@ -3611,6 +3796,149 @@ type NotFoundJSONResponse Error
 type TooManyRequestsJSONResponse Error
 
 type UnauthorizedJSONResponse Error
+
+type ListAdminUsersRequestObject struct {
+	Params ListAdminUsersParams
+}
+
+type ListAdminUsersResponseObject interface {
+	VisitListAdminUsersResponse(w http.ResponseWriter) error
+}
+
+type ListAdminUsers200JSONResponse []AdminUser
+
+func (response ListAdminUsers200JSONResponse) VisitListAdminUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAdminUsers400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListAdminUsers400JSONResponse) VisitListAdminUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAdminUsers401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListAdminUsers401JSONResponse) VisitListAdminUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAdminUsers403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListAdminUsers403JSONResponse) VisitListAdminUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetUserRoleRequestObject struct {
+	Id   openapi_types.UUID `json:"id"`
+	Body *SetUserRoleJSONRequestBody
+}
+
+type SetUserRoleResponseObject interface {
+	VisitSetUserRoleResponse(w http.ResponseWriter) error
+}
+
+type SetUserRole200JSONResponse AdminUser
+
+func (response SetUserRole200JSONResponse) VisitSetUserRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetUserRole400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SetUserRole400JSONResponse) VisitSetUserRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetUserRole401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SetUserRole401JSONResponse) VisitSetUserRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetUserRole403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SetUserRole403JSONResponse) VisitSetUserRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetUserRole404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SetUserRole404JSONResponse) VisitSetUserRoleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type DevLoginRequestObject struct {
 	Params DevLoginParams
@@ -7050,6 +7378,12 @@ func (response FinishWorkout404JSONResponse) VisitFinishWorkoutResponse(w http.R
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// ListAdminUsers People, for the role screen (admins only).
+	// (GET /admin/users)
+	ListAdminUsers(ctx context.Context, request ListAdminUsersRequestObject) (ListAdminUsersResponseObject, error)
+	// SetUserRole Makes someone a moderator, or an ordinary user again (admins only).
+	// (PUT /admin/users/{id}/role)
+	SetUserRole(ctx context.Context, request SetUserRoleRequestObject) (SetUserRoleResponseObject, error)
 	// DevLogin Development sign-in that creates the user on first use. Answers 404 unless DEV_LOGIN is on.
 	// (POST /auth/dev-login)
 	DevLogin(ctx context.Context, request DevLoginRequestObject) (DevLoginResponseObject, error)
@@ -7266,6 +7600,65 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListAdminUsers operation middleware
+func (sh *strictHandler) ListAdminUsers(w http.ResponseWriter, r *http.Request, params ListAdminUsersParams) {
+	var request ListAdminUsersRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAdminUsers(ctx, request.(ListAdminUsersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAdminUsers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListAdminUsersResponseObject); ok {
+		if err := validResponse.VisitListAdminUsersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetUserRole operation middleware
+func (sh *strictHandler) SetUserRole(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request SetUserRoleRequestObject
+
+	request.Id = id
+
+	var body SetUserRoleJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetUserRole(ctx, request.(SetUserRoleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetUserRole")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetUserRoleResponseObject); ok {
+		if err := validResponse.VisitSetUserRoleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // DevLogin operation middleware

@@ -654,6 +654,16 @@ type Report struct {
 	ResolvedAt   *time.Time    `json:"resolved_at"`
 }
 
+// Role changes made by admins in the app: who changed whom, from what, to what.
+type RoleChange struct {
+	ID        uuid.UUID     `json:"id"`
+	AdminID   uuid.NullUUID `json:"admin_id"`
+	UserID    uuid.UUID     `json:"user_id"`
+	FromRole  UserRole      `json:"from_role"`
+	ToRole    UserRole      `json:"to_role"`
+	CreatedAt time.Time     `json:"created_at"`
+}
+
 // Individual sets. Which of weight/reps/duration/distance are required depends on exercises.kind; enforced in the API.
 type Set struct {
 	ID                uuid.UUID           `json:"id"`

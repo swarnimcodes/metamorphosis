@@ -29,6 +29,7 @@ type Server struct {
 	exercisesAPI
 	workoutsAPI
 	socialAPI
+	adminAPI
 	statsAPI
 	bodyWeightAPI
 }
@@ -42,6 +43,7 @@ func Register(r chi.Router, d Deps) {
 		exercisesAPI:  newExercisesAPI(d, q),
 		workoutsAPI:   newWorkoutsAPI(d, q),
 		socialAPI:     newSocialAPI(d, q),
+		adminAPI:      newAdminAPI(d, q),
 		statsAPI:      newStatsAPI(d, q),
 		bodyWeightAPI: bodyWeightAPI{svc: bodyweight.NewService(q)},
 	}

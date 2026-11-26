@@ -154,3 +154,45 @@ func TestOrdinaryUsersMayEditThirtyTimesAnHour(t *testing.T) {
 	}
 	ok(t, patch(t, "/gyms/"+id, newUser(t, "ratey2").Token, map[string]any{"area": "Someone else"}))
 }
+
+func TestAdminsManageModeratorsFromTheApp(t *testing.T) {
+	t.Parallel()
+	admin := roleUser(t, "adm", "admin")
+	other := roleUser(t, "adm2", "admin")
+	user, mod := newUser(t, "promo"), roleUser(t, "already", "moderator")
+
+	// Only admins.
+	errBody(t, get(t, "/admin/users?q="+user.Name, mod.Token), 403, "only admins can manage roles", "forbidden")
+	errBody(t, put(t, "/admin/users/"+user.ID+"/role", mod.Token, map[string]any{"role": "moderator"}), 403, "only admins can manage roles", "forbidden")
+	errBody(t, get(t, "/admin/users", user.Token), 403, "only admins can manage roles", "forbidden")
+	unauthorized(t, get(t, "/admin/users", ""))
+
+	// Find a person: name, username and role, never the email.
+	found := ok(t, get(t, "/admin/users?q="+user.Name, admin.Token)).JSON
+	sameStrings(t, "the match", ids(found), []string{user.ID})
+	eq(t, "admin user field count", found.Idx(0).Len(), 5)
+	str(t, "an ordinary user", found.Idx(0).Get("role"), "user")
+	errBody(t, get(t, "/admin/users?filter=everyone", admin.Token), 400, "", "")
+
+	// Make a moderator; they can work the reports at once, and the change shows everywhere.
+	u := ok(t, put(t, "/admin/users/"+user.ID+"/role", admin.Token, map[string]any{"role": "moderator"}))
+	str(t, "new role", u.Get("role"), "moderator")
+	str(t, "their /me", ok(t, get(t, "/me", user.Token)).Get("role"), "moderator")
+	ok(t, get(t, "/reports", user.Token))
+	isTrue(t, "listed among the staff", contains(ids(ok(t, get(t, "/admin/users?filter=staff", admin.Token)).JSON), user.ID))
+	str(t, "saying it again changes nothing", ok(t, put(t, "/admin/users/"+user.ID+"/role", admin.Token, map[string]any{"role": "moderator"})).Get("role"), "moderator")
+	eq(t, "one recorded change", sql(t, "select count(*) from role_changes where user_id = '"+user.ID+"'"), "1")
+
+	// And take it away.
+	str(t, "back to user", ok(t, put(t, "/admin/users/"+user.ID+"/role", admin.Token, map[string]any{"role": "user"})).Get("role"), "user")
+	errBody(t, get(t, "/reports", user.Token), 403, "only moderators can work the reports", "forbidden")
+	eq(t, "two recorded changes", sql(t, "select count(*) from role_changes where user_id = '"+user.ID+"'"), "2")
+
+	// The limits.
+	errBody(t, put(t, "/admin/users/"+admin.ID+"/role", admin.Token, map[string]any{"role": "user"}), 400, "you can't change your own role", "")
+	errBody(t, put(t, "/admin/users/"+other.ID+"/role", admin.Token, map[string]any{"role": "user"}), 400, "an admin's role can only be changed in the database", "admin_role")
+	errBody(t, put(t, "/admin/users/"+user.ID+"/role", admin.Token, map[string]any{"role": "admin"}), 400, "", "")
+	status(t, put(t, "/admin/users/"+user.ID+"/role", admin.Token, map[string]any{}), 400)
+	status(t, put(t, "/admin/users/00000000-0000-4000-8000-"+randHex(12)+"/role", admin.Token, map[string]any{"role": "moderator"}), 404)
+	str(t, "an admin is still an admin", ok(t, get(t, "/me", other.Token)).Get("role"), "admin")
+}
