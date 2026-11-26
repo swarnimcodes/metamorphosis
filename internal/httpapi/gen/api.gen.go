@@ -70,6 +70,135 @@ func (e MeRole) Valid() bool {
 	}
 }
 
+// Defines values for NotificationKind.
+const (
+	NotificationKindFriendAccepted NotificationKind = "friend_accepted"
+	NotificationKindFriendRequest  NotificationKind = "friend_request"
+	NotificationKindWorkoutLiked   NotificationKind = "workout_liked"
+)
+
+// Valid indicates whether the value is a known member of the NotificationKind enum.
+func (e NotificationKind) Valid() bool {
+	switch e {
+	case NotificationKindFriendAccepted:
+		return true
+	case NotificationKindFriendRequest:
+		return true
+	case NotificationKindWorkoutLiked:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PersonRelationship.
+const (
+	PersonRelationshipBlocked         PersonRelationship = "blocked"
+	PersonRelationshipFriends         PersonRelationship = "friends"
+	PersonRelationshipNone            PersonRelationship = "none"
+	PersonRelationshipRequestReceived PersonRelationship = "request_received"
+	PersonRelationshipRequestSent     PersonRelationship = "request_sent"
+	PersonRelationshipSelf            PersonRelationship = "self"
+)
+
+// Valid indicates whether the value is a known member of the PersonRelationship enum.
+func (e PersonRelationship) Valid() bool {
+	switch e {
+	case PersonRelationshipBlocked:
+		return true
+	case PersonRelationshipFriends:
+		return true
+	case PersonRelationshipNone:
+		return true
+	case PersonRelationshipRequestReceived:
+		return true
+	case PersonRelationshipRequestSent:
+		return true
+	case PersonRelationshipSelf:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PersonProfileRelationship.
+const (
+	PersonProfileRelationshipBlocked         PersonProfileRelationship = "blocked"
+	PersonProfileRelationshipFriends         PersonProfileRelationship = "friends"
+	PersonProfileRelationshipNone            PersonProfileRelationship = "none"
+	PersonProfileRelationshipRequestReceived PersonProfileRelationship = "request_received"
+	PersonProfileRelationshipRequestSent     PersonProfileRelationship = "request_sent"
+	PersonProfileRelationshipSelf            PersonProfileRelationship = "self"
+)
+
+// Valid indicates whether the value is a known member of the PersonProfileRelationship enum.
+func (e PersonProfileRelationship) Valid() bool {
+	switch e {
+	case PersonProfileRelationshipBlocked:
+		return true
+	case PersonProfileRelationshipFriends:
+		return true
+	case PersonProfileRelationshipNone:
+		return true
+	case PersonProfileRelationshipRequestReceived:
+		return true
+	case PersonProfileRelationshipRequestSent:
+		return true
+	case PersonProfileRelationshipSelf:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RelationshipStateRelationship.
+const (
+	RelationshipStateRelationshipBlocked         RelationshipStateRelationship = "blocked"
+	RelationshipStateRelationshipFriends         RelationshipStateRelationship = "friends"
+	RelationshipStateRelationshipNone            RelationshipStateRelationship = "none"
+	RelationshipStateRelationshipRequestReceived RelationshipStateRelationship = "request_received"
+	RelationshipStateRelationshipRequestSent     RelationshipStateRelationship = "request_sent"
+	RelationshipStateRelationshipSelf            RelationshipStateRelationship = "self"
+)
+
+// Valid indicates whether the value is a known member of the RelationshipStateRelationship enum.
+func (e RelationshipStateRelationship) Valid() bool {
+	switch e {
+	case RelationshipStateRelationshipBlocked:
+		return true
+	case RelationshipStateRelationshipFriends:
+		return true
+	case RelationshipStateRelationshipNone:
+		return true
+	case RelationshipStateRelationshipRequestReceived:
+		return true
+	case RelationshipStateRelationshipRequestSent:
+		return true
+	case RelationshipStateRelationshipSelf:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ReportStatus.
+const (
+	ReportStatusOpen     ReportStatus = "open"
+	ReportStatusResolved ReportStatus = "resolved"
+)
+
+// Valid indicates whether the value is a known member of the ReportStatus enum.
+func (e ReportStatus) Valid() bool {
+	switch e {
+	case ReportStatusOpen:
+		return true
+	case ReportStatusResolved:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WorkoutSetType.
 const (
 	WorkoutSetTypeDrop    WorkoutSetType = "drop"
@@ -88,6 +217,24 @@ func (e WorkoutSetType) Valid() bool {
 	case WorkoutSetTypeWarmup:
 		return true
 	case WorkoutSetTypeWorking:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListReportsParamsStatus.
+const (
+	ListReportsParamsStatusOpen     ListReportsParamsStatus = "open"
+	ListReportsParamsStatusResolved ListReportsParamsStatus = "resolved"
+)
+
+// Valid indicates whether the value is a known member of the ListReportsParamsStatus enum.
+func (e ListReportsParamsStatus) Valid() bool {
+	switch e {
+	case ListReportsParamsStatusOpen:
+		return true
+	case ListReportsParamsStatusResolved:
 		return true
 	default:
 		return false
@@ -173,6 +320,20 @@ type Exercise struct {
 
 	// SuggestedTagIds Variation tags the search query asked for (e.g. "preacher curl" suggests `preacher`).
 	SuggestedTagIds []openapi_types.UUID `json:"suggested_tag_ids"`
+}
+
+// FriendRequests defines model for FriendRequests.
+type FriendRequests struct {
+	Incoming []Person `json:"incoming"`
+	Outgoing []Person `json:"outgoing"`
+}
+
+// FriendWorkout defines model for FriendWorkout.
+type FriendWorkout struct {
+	// Liked Whether the caller liked it.
+	Liked   bool    `json:"liked"`
+	Likes   int32   `json:"likes"`
+	Workout Workout `json:"workout"`
 }
 
 // GoogleLoggedIn defines model for GoogleLoggedIn.
@@ -335,6 +496,12 @@ type GymVerify struct {
 	Verified bool `json:"verified"`
 }
 
+// Likes defines model for Likes.
+type Likes struct {
+	Liked bool  `json:"liked"`
+	Likes int32 `json:"likes"`
+}
+
 // LoginResponse defines model for LoginResponse.
 type LoginResponse struct {
 	AccessToken      string             `json:"access_token"`
@@ -384,6 +551,66 @@ type MeUpdate struct {
 	// UnitSystem `metric` or `imperial`.
 	UnitSystem *string `json:"unit_system,omitempty"`
 }
+
+// Notification defines model for Notification.
+type Notification struct {
+	Actor NotificationActor  `json:"actor"`
+	At    time.Time          `json:"at"`
+	Id    openapi_types.UUID `json:"id"`
+	Kind  NotificationKind   `json:"kind"`
+	Read  bool               `json:"read"`
+
+	// WorkoutId For workout_liked: the caller's own workout.
+	WorkoutId *openapi_types.UUID `json:"workout_id"`
+}
+
+// NotificationKind defines model for Notification.Kind.
+type NotificationKind string
+
+// NotificationActor defines model for NotificationActor.
+type NotificationActor struct {
+	DisplayName string             `json:"display_name"`
+	Id          openapi_types.UUID `json:"id"`
+	Username    string             `json:"username"`
+}
+
+// Notifications defines model for Notifications.
+type Notifications struct {
+	Items  []Notification `json:"items"`
+	Unread int32          `json:"unread"`
+}
+
+// Person defines model for Person.
+type Person struct {
+	// AvatarUrl Friends and yourself only; strangers get null.
+	AvatarUrl   *string            `json:"avatar_url"`
+	DisplayName string             `json:"display_name"`
+	Id          openapi_types.UUID `json:"id"`
+
+	// Relationship From the caller's side.
+	Relationship PersonRelationship `json:"relationship"`
+	Username     string             `json:"username"`
+}
+
+// PersonRelationship From the caller's side.
+type PersonRelationship string
+
+// PersonProfile defines model for PersonProfile.
+type PersonProfile struct {
+	AvatarUrl    *string                   `json:"avatar_url"`
+	DisplayName  string                    `json:"display_name"`
+	FriendsSince *time.Time                `json:"friends_since"`
+	Id           openapi_types.UUID        `json:"id"`
+	MemberSince  time.Time                 `json:"member_since"`
+	Relationship PersonProfileRelationship `json:"relationship"`
+	Username     string                    `json:"username"`
+
+	// Workouts Finished workouts.
+	Workouts int32 `json:"workouts"`
+}
+
+// PersonProfileRelationship defines model for PersonProfile.Relationship.
+type PersonProfileRelationship string
 
 // ProgressCountRecord defines model for ProgressCountRecord.
 type ProgressCountRecord struct {
@@ -435,6 +662,43 @@ type ProgressResponse struct {
 	VariantKey *string `json:"variant_key"`
 }
 
+// RelationshipState defines model for RelationshipState.
+type RelationshipState struct {
+	Relationship RelationshipStateRelationship `json:"relationship"`
+}
+
+// RelationshipStateRelationship defines model for RelationshipState.Relationship.
+type RelationshipStateRelationship string
+
+// Report defines model for Report.
+type Report struct {
+	At        time.Time           `json:"at"`
+	Id        openapi_types.UUID  `json:"id"`
+	Reason    string              `json:"reason"`
+	Reporter  *ReportPerson       `json:"reporter"`
+	Status    ReportStatus        `json:"status"`
+	Target    ReportPerson        `json:"target"`
+	WorkoutId *openapi_types.UUID `json:"workout_id"`
+}
+
+// ReportStatus defines model for Report.Status.
+type ReportStatus string
+
+// ReportCreate defines model for ReportCreate.
+type ReportCreate struct {
+	// Reason 1 to 500 characters.
+	Reason    string              `json:"reason"`
+	UserId    openapi_types.UUID  `json:"user_id"`
+	WorkoutId *openapi_types.UUID `json:"workout_id,omitempty"`
+}
+
+// ReportPerson defines model for ReportPerson.
+type ReportPerson struct {
+	DisplayName string             `json:"display_name"`
+	Id          openapi_types.UUID `json:"id"`
+	Username    string             `json:"username"`
+}
+
 // StatsLoggedExercise defines model for StatsLoggedExercise.
 type StatsLoggedExercise struct {
 	ExerciseId    openapi_types.UUID `json:"exercise_id"`
@@ -455,6 +719,11 @@ type Tag struct {
 	Id       openapi_types.UUID `json:"id"`
 	Name     string             `json:"name"`
 	Slug     string             `json:"slug"`
+}
+
+// UnreadCount defines model for UnreadCount.
+type UnreadCount struct {
+	Count int32 `json:"count"`
 }
 
 // UsernameAvailability defines model for UsernameAvailability.
@@ -695,6 +964,30 @@ type SearchGymsParams struct {
 	Limit *int64  `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// ListNotificationsParams defines parameters for ListNotifications.
+type ListNotificationsParams struct {
+	Limit *int64 `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// SearchPeopleParams defines parameters for SearchPeople.
+type SearchPeopleParams struct {
+	Q string `form:"q" json:"q"`
+}
+
+// ListPersonWorkoutsParams defines parameters for ListPersonWorkouts.
+type ListPersonWorkoutsParams struct {
+	Limit  *int64     `form:"limit,omitempty" json:"limit,omitempty"`
+	Before *time.Time `form:"before,omitempty" json:"before,omitempty"`
+}
+
+// ListReportsParams defines parameters for ListReports.
+type ListReportsParams struct {
+	Status *ListReportsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// ListReportsParamsStatus defines parameters for ListReports.
+type ListReportsParamsStatus string
+
 // GetStatsConsistencyParams defines parameters for GetStatsConsistency.
 type GetStatsConsistencyParams struct {
 	Weeks *int64 `form:"weeks,omitempty" json:"weeks,omitempty"`
@@ -746,6 +1039,9 @@ type DeleteMeJSONRequestBody = MeDelete
 
 // UpdateMeJSONRequestBody defines body for UpdateMe for application/json ContentType.
 type UpdateMeJSONRequestBody = MeUpdate
+
+// CreateReportJSONRequestBody defines body for CreateReport for application/json ContentType.
+type CreateReportJSONRequestBody = ReportCreate
 
 // UpdateSetJSONRequestBody defines body for UpdateSet for application/json ContentType.
 type UpdateSetJSONRequestBody = WorkoutSetUpdate
@@ -847,6 +1143,9 @@ type ServerInterface interface {
 	// UsernameAvailable Whether a username can be chosen at signup. Answers 404 unless Google sign-in is configured.
 	// (GET /auth/username-available)
 	UsernameAvailable(w http.ResponseWriter, r *http.Request, params UsernameAvailableParams)
+	// ListBlocks People you blocked.
+	// (GET /blocks)
+	ListBlocks(w http.ResponseWriter, r *http.Request)
 	// ListBodyWeights The signed-in user's weigh-ins, oldest first (at most 5000, the newest kept).
 	// (GET /body-weights)
 	ListBodyWeights(w http.ResponseWriter, r *http.Request, params ListBodyWeightsParams)
@@ -862,6 +1161,12 @@ type ServerInterface interface {
 	// GetLastSession The caller's sets from their most recent session of an exercise with this exact variant.
 	// (GET /exercises/{id}/last)
 	GetLastSession(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params GetLastSessionParams)
+	// ListFriends Your friends.
+	// (GET /friends)
+	ListFriends(w http.ResponseWriter, r *http.Request)
+	// ListFriendRequests Requests waiting for you and the ones you sent.
+	// (GET /friends/requests)
+	ListFriendRequests(w http.ResponseWriter, r *http.Request)
 	// SearchGyms Search the shared gym directory.
 	// (GET /gyms)
 	SearchGyms(w http.ResponseWriter, r *http.Request, params SearchGymsParams)
@@ -901,6 +1206,57 @@ type ServerInterface interface {
 	// UpdateMe Changes the display name, unit system or time zone. Absent or null fields are left as they are.
 	// (PATCH /me)
 	UpdateMe(w http.ResponseWriter, r *http.Request)
+	// ListNotifications Your notifications, newest first.
+	// (GET /notifications)
+	ListNotifications(w http.ResponseWriter, r *http.Request, params ListNotificationsParams)
+	// MarkNotificationsRead Marks all notifications read.
+	// (POST /notifications/read)
+	MarkNotificationsRead(w http.ResponseWriter, r *http.Request)
+	// GetUnreadNotifications How many notifications are unread (the badge).
+	// (GET /notifications/unread)
+	GetUnreadNotifications(w http.ResponseWriter, r *http.Request)
+	// SearchPeople Find people by name or username.
+	// (GET /people)
+	SearchPeople(w http.ResponseWriter, r *http.Request, params SearchPeopleParams)
+	// GetPerson A person's profile: the basics for a stranger, more for a friend.
+	// (GET /people/{id})
+	GetPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// AcceptFriendRequest Accepts the request this person sent.
+	// (POST /people/{id}/accept)
+	AcceptFriendRequest(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// UnblockPerson Lifts a block. The friendship does not return.
+	// (DELETE /people/{id}/block)
+	UnblockPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// BlockPerson Blocks: you and they disappear from each other and any friendship ends.
+	// (PUT /people/{id}/block)
+	BlockPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// SendFriendRequest Asks to be friends.
+	// (POST /people/{id}/friend-request)
+	SendFriendRequest(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// RemoveFriendship Cancels a request you sent, declines one you received, or unfriends.
+	// (DELETE /people/{id}/friendship)
+	RemoveFriendship(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// ListPersonWorkouts A friend's workouts, newest first.
+	// (GET /people/{id}/workouts)
+	ListPersonWorkouts(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params ListPersonWorkoutsParams)
+	// GetPersonWorkout One of a friend's workouts, with its likes.
+	// (GET /people/{id}/workouts/{workout_id})
+	GetPersonWorkout(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, workoutId openapi_types.UUID)
+	// UnlikePersonWorkout Takes the like back.
+	// (DELETE /people/{id}/workouts/{workout_id}/like)
+	UnlikePersonWorkout(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, workoutId openapi_types.UUID)
+	// LikePersonWorkout Likes a friend's workout.
+	// (PUT /people/{id}/workouts/{workout_id}/like)
+	LikePersonWorkout(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, workoutId openapi_types.UUID)
+	// ListReports The report queue (moderators and admins).
+	// (GET /reports)
+	ListReports(w http.ResponseWriter, r *http.Request, params ListReportsParams)
+	// CreateReport Reports a person or one of their workouts to the moderators.
+	// (POST /reports)
+	CreateReport(w http.ResponseWriter, r *http.Request)
+	// ResolveReport Marks a report handled (moderators and admins).
+	// (POST /reports/{id}/resolve)
+	ResolveReport(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 
 	// (DELETE /sets/{id})
 	DeleteSet(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
@@ -985,6 +1341,12 @@ func (_ Unimplemented) UsernameAvailable(w http.ResponseWriter, r *http.Request,
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ListBlocks People you blocked.
+// (GET /blocks)
+func (_ Unimplemented) ListBlocks(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListBodyWeights The signed-in user's weigh-ins, oldest first (at most 5000, the newest kept).
 // (GET /body-weights)
 func (_ Unimplemented) ListBodyWeights(w http.ResponseWriter, r *http.Request, params ListBodyWeightsParams) {
@@ -1011,6 +1373,18 @@ func (_ Unimplemented) SearchExercises(w http.ResponseWriter, r *http.Request, p
 // GetLastSession The caller's sets from their most recent session of an exercise with this exact variant.
 // (GET /exercises/{id}/last)
 func (_ Unimplemented) GetLastSession(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params GetLastSessionParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListFriends Your friends.
+// (GET /friends)
+func (_ Unimplemented) ListFriends(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListFriendRequests Requests waiting for you and the ones you sent.
+// (GET /friends/requests)
+func (_ Unimplemented) ListFriendRequests(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1089,6 +1463,108 @@ func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
 // UpdateMe Changes the display name, unit system or time zone. Absent or null fields are left as they are.
 // (PATCH /me)
 func (_ Unimplemented) UpdateMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListNotifications Your notifications, newest first.
+// (GET /notifications)
+func (_ Unimplemented) ListNotifications(w http.ResponseWriter, r *http.Request, params ListNotificationsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// MarkNotificationsRead Marks all notifications read.
+// (POST /notifications/read)
+func (_ Unimplemented) MarkNotificationsRead(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetUnreadNotifications How many notifications are unread (the badge).
+// (GET /notifications/unread)
+func (_ Unimplemented) GetUnreadNotifications(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SearchPeople Find people by name or username.
+// (GET /people)
+func (_ Unimplemented) SearchPeople(w http.ResponseWriter, r *http.Request, params SearchPeopleParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetPerson A person's profile: the basics for a stranger, more for a friend.
+// (GET /people/{id})
+func (_ Unimplemented) GetPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AcceptFriendRequest Accepts the request this person sent.
+// (POST /people/{id}/accept)
+func (_ Unimplemented) AcceptFriendRequest(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UnblockPerson Lifts a block. The friendship does not return.
+// (DELETE /people/{id}/block)
+func (_ Unimplemented) UnblockPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// BlockPerson Blocks: you and they disappear from each other and any friendship ends.
+// (PUT /people/{id}/block)
+func (_ Unimplemented) BlockPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SendFriendRequest Asks to be friends.
+// (POST /people/{id}/friend-request)
+func (_ Unimplemented) SendFriendRequest(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RemoveFriendship Cancels a request you sent, declines one you received, or unfriends.
+// (DELETE /people/{id}/friendship)
+func (_ Unimplemented) RemoveFriendship(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListPersonWorkouts A friend's workouts, newest first.
+// (GET /people/{id}/workouts)
+func (_ Unimplemented) ListPersonWorkouts(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params ListPersonWorkoutsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetPersonWorkout One of a friend's workouts, with its likes.
+// (GET /people/{id}/workouts/{workout_id})
+func (_ Unimplemented) GetPersonWorkout(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, workoutId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UnlikePersonWorkout Takes the like back.
+// (DELETE /people/{id}/workouts/{workout_id}/like)
+func (_ Unimplemented) UnlikePersonWorkout(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, workoutId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// LikePersonWorkout Likes a friend's workout.
+// (PUT /people/{id}/workouts/{workout_id}/like)
+func (_ Unimplemented) LikePersonWorkout(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, workoutId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListReports The report queue (moderators and admins).
+// (GET /reports)
+func (_ Unimplemented) ListReports(w http.ResponseWriter, r *http.Request, params ListReportsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateReport Reports a person or one of their workouts to the moderators.
+// (POST /reports)
+func (_ Unimplemented) CreateReport(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ResolveReport Marks a report handled (moderators and admins).
+// (POST /reports/{id}/resolve)
+func (_ Unimplemented) ResolveReport(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1391,6 +1867,20 @@ func (siw *ServerInterfaceWrapper) UsernameAvailable(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// ListBlocks operation middleware
+func (siw *ServerInterfaceWrapper) ListBlocks(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListBlocks(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListBodyWeights operation middleware
 func (siw *ServerInterfaceWrapper) ListBodyWeights(w http.ResponseWriter, r *http.Request) {
 
@@ -1568,6 +2058,34 @@ func (siw *ServerInterfaceWrapper) GetLastSession(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetLastSession(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListFriends operation middleware
+func (siw *ServerInterfaceWrapper) ListFriends(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListFriends(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListFriendRequests operation middleware
+func (siw *ServerInterfaceWrapper) ListFriendRequests(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListFriendRequests(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1875,6 +2393,489 @@ func (siw *ServerInterfaceWrapper) UpdateMe(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListNotifications operation middleware
+func (siw *ServerInterfaceWrapper) ListNotifications(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListNotificationsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListNotifications(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MarkNotificationsRead operation middleware
+func (siw *ServerInterfaceWrapper) MarkNotificationsRead(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MarkNotificationsRead(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetUnreadNotifications operation middleware
+func (siw *ServerInterfaceWrapper) GetUnreadNotifications(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUnreadNotifications(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchPeople operation middleware
+func (siw *ServerInterfaceWrapper) SearchPeople(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SearchPeopleParams
+
+	// ------------- Required query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchPeople(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPerson operation middleware
+func (siw *ServerInterfaceWrapper) GetPerson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPerson(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AcceptFriendRequest operation middleware
+func (siw *ServerInterfaceWrapper) AcceptFriendRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AcceptFriendRequest(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UnblockPerson operation middleware
+func (siw *ServerInterfaceWrapper) UnblockPerson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UnblockPerson(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// BlockPerson operation middleware
+func (siw *ServerInterfaceWrapper) BlockPerson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.BlockPerson(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SendFriendRequest operation middleware
+func (siw *ServerInterfaceWrapper) SendFriendRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SendFriendRequest(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveFriendship operation middleware
+func (siw *ServerInterfaceWrapper) RemoveFriendship(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveFriendship(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPersonWorkouts operation middleware
+func (siw *ServerInterfaceWrapper) ListPersonWorkouts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPersonWorkoutsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "before" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "before", r.URL.Query(), &params.Before, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "before"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "before", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPersonWorkouts(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPersonWorkout operation middleware
+func (siw *ServerInterfaceWrapper) GetPersonWorkout(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workout_id" -------------
+	var workoutId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workout_id", chi.URLParam(r, "workout_id"), &workoutId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workout_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPersonWorkout(w, r, id, workoutId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UnlikePersonWorkout operation middleware
+func (siw *ServerInterfaceWrapper) UnlikePersonWorkout(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workout_id" -------------
+	var workoutId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workout_id", chi.URLParam(r, "workout_id"), &workoutId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workout_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UnlikePersonWorkout(w, r, id, workoutId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// LikePersonWorkout operation middleware
+func (siw *ServerInterfaceWrapper) LikePersonWorkout(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workout_id" -------------
+	var workoutId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workout_id", chi.URLParam(r, "workout_id"), &workoutId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workout_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LikePersonWorkout(w, r, id, workoutId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListReports operation middleware
+func (siw *ServerInterfaceWrapper) ListReports(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListReportsParams
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListReports(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateReport operation middleware
+func (siw *ServerInterfaceWrapper) CreateReport(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateReport(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ResolveReport operation middleware
+func (siw *ServerInterfaceWrapper) ResolveReport(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResolveReport(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2484,6 +3485,66 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/gyms/{id}/history", wrapper.GetGymHistory)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/people", wrapper.SearchPeople)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/people/{id}", wrapper.GetPerson)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/people/{id}/workouts", wrapper.ListPersonWorkouts)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/people/{id}/workouts/{workout_id}", wrapper.GetPersonWorkout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/people/{id}/workouts/{workout_id}/like", wrapper.UnlikePersonWorkout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/people/{id}/workouts/{workout_id}/like", wrapper.LikePersonWorkout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/people/{id}/friend-request", wrapper.SendFriendRequest)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/people/{id}/accept", wrapper.AcceptFriendRequest)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/people/{id}/friendship", wrapper.RemoveFriendship)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/people/{id}/block", wrapper.UnblockPerson)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/people/{id}/block", wrapper.BlockPerson)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/friends", wrapper.ListFriends)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/friends/requests", wrapper.ListFriendRequests)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/blocks", wrapper.ListBlocks)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/notifications", wrapper.ListNotifications)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/notifications/unread", wrapper.GetUnreadNotifications)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/notifications/read", wrapper.MarkNotificationsRead)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/reports", wrapper.ListReports)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/reports", wrapper.CreateReport)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/reports/{id}/resolve", wrapper.ResolveReport)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/exercises", wrapper.SearchExercises)
 	})
 	r.Group(func(r chi.Router) {
@@ -2861,6 +3922,41 @@ func (response UsernameAvailable404JSONResponse) VisitUsernameAvailableResponse(
 	return err
 }
 
+type ListBlocksRequestObject struct {
+}
+
+type ListBlocksResponseObject interface {
+	VisitListBlocksResponse(w http.ResponseWriter) error
+}
+
+type ListBlocks200JSONResponse []Person
+
+func (response ListBlocks200JSONResponse) VisitListBlocksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBlocks401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListBlocks401JSONResponse) VisitListBlocksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListBodyWeightsRequestObject struct {
 	Params ListBodyWeightsParams
 }
@@ -3117,6 +4213,76 @@ func (response GetLastSession404JSONResponse) VisitGetLastSessionResponse(w http
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFriendsRequestObject struct {
+}
+
+type ListFriendsResponseObject interface {
+	VisitListFriendsResponse(w http.ResponseWriter) error
+}
+
+type ListFriends200JSONResponse []Person
+
+func (response ListFriends200JSONResponse) VisitListFriendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFriends401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListFriends401JSONResponse) VisitListFriendsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFriendRequestsRequestObject struct {
+}
+
+type ListFriendRequestsResponseObject interface {
+	VisitListFriendRequestsResponse(w http.ResponseWriter) error
+}
+
+type ListFriendRequests200JSONResponse FriendRequests
+
+func (response ListFriendRequests200JSONResponse) VisitListFriendRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFriendRequests401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListFriendRequests401JSONResponse) VisitListFriendRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -3939,6 +5105,1038 @@ func (response UpdateMe401JSONResponse) VisitUpdateMeResponse(w http.ResponseWri
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListNotificationsRequestObject struct {
+	Params ListNotificationsParams
+}
+
+type ListNotificationsResponseObject interface {
+	VisitListNotificationsResponse(w http.ResponseWriter) error
+}
+
+type ListNotifications200JSONResponse Notifications
+
+func (response ListNotifications200JSONResponse) VisitListNotificationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListNotifications400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListNotifications400JSONResponse) VisitListNotificationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListNotifications401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListNotifications401JSONResponse) VisitListNotificationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNotificationsReadRequestObject struct {
+}
+
+type MarkNotificationsReadResponseObject interface {
+	VisitMarkNotificationsReadResponse(w http.ResponseWriter) error
+}
+
+type MarkNotificationsRead204Response struct {
+}
+
+func (response MarkNotificationsRead204Response) VisitMarkNotificationsReadResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type MarkNotificationsRead401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response MarkNotificationsRead401JSONResponse) VisitMarkNotificationsReadResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUnreadNotificationsRequestObject struct {
+}
+
+type GetUnreadNotificationsResponseObject interface {
+	VisitGetUnreadNotificationsResponse(w http.ResponseWriter) error
+}
+
+type GetUnreadNotifications200JSONResponse UnreadCount
+
+func (response GetUnreadNotifications200JSONResponse) VisitGetUnreadNotificationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUnreadNotifications401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetUnreadNotifications401JSONResponse) VisitGetUnreadNotificationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchPeopleRequestObject struct {
+	Params SearchPeopleParams
+}
+
+type SearchPeopleResponseObject interface {
+	VisitSearchPeopleResponse(w http.ResponseWriter) error
+}
+
+type SearchPeople200JSONResponse []Person
+
+func (response SearchPeople200JSONResponse) VisitSearchPeopleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchPeople400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchPeople400JSONResponse) VisitSearchPeopleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchPeople401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SearchPeople401JSONResponse) VisitSearchPeopleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SearchPeople404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SearchPeople404JSONResponse) VisitSearchPeopleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPersonRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type GetPersonResponseObject interface {
+	VisitGetPersonResponse(w http.ResponseWriter) error
+}
+
+type GetPerson200JSONResponse PersonProfile
+
+func (response GetPerson200JSONResponse) VisitGetPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPerson400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetPerson400JSONResponse) VisitGetPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPerson401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetPerson401JSONResponse) VisitGetPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPerson404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetPerson404JSONResponse) VisitGetPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptFriendRequestRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type AcceptFriendRequestResponseObject interface {
+	VisitAcceptFriendRequestResponse(w http.ResponseWriter) error
+}
+
+type AcceptFriendRequest200JSONResponse RelationshipState
+
+func (response AcceptFriendRequest200JSONResponse) VisitAcceptFriendRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptFriendRequest400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AcceptFriendRequest400JSONResponse) VisitAcceptFriendRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptFriendRequest401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AcceptFriendRequest401JSONResponse) VisitAcceptFriendRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AcceptFriendRequest404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AcceptFriendRequest404JSONResponse) VisitAcceptFriendRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnblockPersonRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type UnblockPersonResponseObject interface {
+	VisitUnblockPersonResponse(w http.ResponseWriter) error
+}
+
+type UnblockPerson204Response struct {
+}
+
+func (response UnblockPerson204Response) VisitUnblockPersonResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type UnblockPerson400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UnblockPerson400JSONResponse) VisitUnblockPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnblockPerson401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UnblockPerson401JSONResponse) VisitUnblockPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnblockPerson404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UnblockPerson404JSONResponse) VisitUnblockPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BlockPersonRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type BlockPersonResponseObject interface {
+	VisitBlockPersonResponse(w http.ResponseWriter) error
+}
+
+type BlockPerson204Response struct {
+}
+
+func (response BlockPerson204Response) VisitBlockPersonResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type BlockPerson400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response BlockPerson400JSONResponse) VisitBlockPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BlockPerson401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response BlockPerson401JSONResponse) VisitBlockPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BlockPerson404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response BlockPerson404JSONResponse) VisitBlockPersonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendFriendRequestRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type SendFriendRequestResponseObject interface {
+	VisitSendFriendRequestResponse(w http.ResponseWriter) error
+}
+
+type SendFriendRequest200JSONResponse RelationshipState
+
+func (response SendFriendRequest200JSONResponse) VisitSendFriendRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendFriendRequest400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SendFriendRequest400JSONResponse) VisitSendFriendRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendFriendRequest401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SendFriendRequest401JSONResponse) VisitSendFriendRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendFriendRequest404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SendFriendRequest404JSONResponse) VisitSendFriendRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendFriendRequest429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response SendFriendRequest429JSONResponse) VisitSendFriendRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveFriendshipRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type RemoveFriendshipResponseObject interface {
+	VisitRemoveFriendshipResponse(w http.ResponseWriter) error
+}
+
+type RemoveFriendship200JSONResponse RelationshipState
+
+func (response RemoveFriendship200JSONResponse) VisitRemoveFriendshipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveFriendship400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response RemoveFriendship400JSONResponse) VisitRemoveFriendshipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveFriendship401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response RemoveFriendship401JSONResponse) VisitRemoveFriendshipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveFriendship404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RemoveFriendship404JSONResponse) VisitRemoveFriendshipResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPersonWorkoutsRequestObject struct {
+	Id     openapi_types.UUID `json:"id"`
+	Params ListPersonWorkoutsParams
+}
+
+type ListPersonWorkoutsResponseObject interface {
+	VisitListPersonWorkoutsResponse(w http.ResponseWriter) error
+}
+
+type ListPersonWorkouts200JSONResponse []WorkoutSummary
+
+func (response ListPersonWorkouts200JSONResponse) VisitListPersonWorkoutsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPersonWorkouts400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListPersonWorkouts400JSONResponse) VisitListPersonWorkoutsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPersonWorkouts401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListPersonWorkouts401JSONResponse) VisitListPersonWorkoutsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPersonWorkouts404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListPersonWorkouts404JSONResponse) VisitListPersonWorkoutsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPersonWorkoutRequestObject struct {
+	Id        openapi_types.UUID `json:"id"`
+	WorkoutId openapi_types.UUID `json:"workout_id"`
+}
+
+type GetPersonWorkoutResponseObject interface {
+	VisitGetPersonWorkoutResponse(w http.ResponseWriter) error
+}
+
+type GetPersonWorkout200JSONResponse FriendWorkout
+
+func (response GetPersonWorkout200JSONResponse) VisitGetPersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPersonWorkout400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetPersonWorkout400JSONResponse) VisitGetPersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPersonWorkout401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetPersonWorkout401JSONResponse) VisitGetPersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPersonWorkout404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetPersonWorkout404JSONResponse) VisitGetPersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnlikePersonWorkoutRequestObject struct {
+	Id        openapi_types.UUID `json:"id"`
+	WorkoutId openapi_types.UUID `json:"workout_id"`
+}
+
+type UnlikePersonWorkoutResponseObject interface {
+	VisitUnlikePersonWorkoutResponse(w http.ResponseWriter) error
+}
+
+type UnlikePersonWorkout200JSONResponse Likes
+
+func (response UnlikePersonWorkout200JSONResponse) VisitUnlikePersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnlikePersonWorkout400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UnlikePersonWorkout400JSONResponse) VisitUnlikePersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnlikePersonWorkout401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UnlikePersonWorkout401JSONResponse) VisitUnlikePersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnlikePersonWorkout404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UnlikePersonWorkout404JSONResponse) VisitUnlikePersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LikePersonWorkoutRequestObject struct {
+	Id        openapi_types.UUID `json:"id"`
+	WorkoutId openapi_types.UUID `json:"workout_id"`
+}
+
+type LikePersonWorkoutResponseObject interface {
+	VisitLikePersonWorkoutResponse(w http.ResponseWriter) error
+}
+
+type LikePersonWorkout200JSONResponse Likes
+
+func (response LikePersonWorkout200JSONResponse) VisitLikePersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LikePersonWorkout400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response LikePersonWorkout400JSONResponse) VisitLikePersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LikePersonWorkout401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response LikePersonWorkout401JSONResponse) VisitLikePersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LikePersonWorkout404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response LikePersonWorkout404JSONResponse) VisitLikePersonWorkoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListReportsRequestObject struct {
+	Params ListReportsParams
+}
+
+type ListReportsResponseObject interface {
+	VisitListReportsResponse(w http.ResponseWriter) error
+}
+
+type ListReports200JSONResponse []Report
+
+func (response ListReports200JSONResponse) VisitListReportsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListReports400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListReports400JSONResponse) VisitListReportsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListReports401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListReports401JSONResponse) VisitListReportsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListReports403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListReports403JSONResponse) VisitListReportsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateReportRequestObject struct {
+	Body *CreateReportJSONRequestBody
+}
+
+type CreateReportResponseObject interface {
+	VisitCreateReportResponse(w http.ResponseWriter) error
+}
+
+type CreateReport204Response struct {
+}
+
+func (response CreateReport204Response) VisitCreateReportResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type CreateReport400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateReport400JSONResponse) VisitCreateReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateReport401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateReport401JSONResponse) VisitCreateReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateReport404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateReport404JSONResponse) VisitCreateReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateReport429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response CreateReport429JSONResponse) VisitCreateReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveReportRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type ResolveReportResponseObject interface {
+	VisitResolveReportResponse(w http.ResponseWriter) error
+}
+
+type ResolveReport204Response struct {
+}
+
+func (response ResolveReport204Response) VisitResolveReportResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ResolveReport400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ResolveReport400JSONResponse) VisitResolveReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveReport401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ResolveReport401JSONResponse) VisitResolveReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveReport403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ResolveReport403JSONResponse) VisitResolveReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveReport404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ResolveReport404JSONResponse) VisitResolveReportResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -4867,6 +7065,9 @@ type StrictServerInterface interface {
 	// UsernameAvailable Whether a username can be chosen at signup. Answers 404 unless Google sign-in is configured.
 	// (GET /auth/username-available)
 	UsernameAvailable(ctx context.Context, request UsernameAvailableRequestObject) (UsernameAvailableResponseObject, error)
+	// ListBlocks People you blocked.
+	// (GET /blocks)
+	ListBlocks(ctx context.Context, request ListBlocksRequestObject) (ListBlocksResponseObject, error)
 	// ListBodyWeights The signed-in user's weigh-ins, oldest first (at most 5000, the newest kept).
 	// (GET /body-weights)
 	ListBodyWeights(ctx context.Context, request ListBodyWeightsRequestObject) (ListBodyWeightsResponseObject, error)
@@ -4882,6 +7083,12 @@ type StrictServerInterface interface {
 	// GetLastSession The caller's sets from their most recent session of an exercise with this exact variant.
 	// (GET /exercises/{id}/last)
 	GetLastSession(ctx context.Context, request GetLastSessionRequestObject) (GetLastSessionResponseObject, error)
+	// ListFriends Your friends.
+	// (GET /friends)
+	ListFriends(ctx context.Context, request ListFriendsRequestObject) (ListFriendsResponseObject, error)
+	// ListFriendRequests Requests waiting for you and the ones you sent.
+	// (GET /friends/requests)
+	ListFriendRequests(ctx context.Context, request ListFriendRequestsRequestObject) (ListFriendRequestsResponseObject, error)
 	// SearchGyms Search the shared gym directory.
 	// (GET /gyms)
 	SearchGyms(ctx context.Context, request SearchGymsRequestObject) (SearchGymsResponseObject, error)
@@ -4921,6 +7128,57 @@ type StrictServerInterface interface {
 	// UpdateMe Changes the display name, unit system or time zone. Absent or null fields are left as they are.
 	// (PATCH /me)
 	UpdateMe(ctx context.Context, request UpdateMeRequestObject) (UpdateMeResponseObject, error)
+	// ListNotifications Your notifications, newest first.
+	// (GET /notifications)
+	ListNotifications(ctx context.Context, request ListNotificationsRequestObject) (ListNotificationsResponseObject, error)
+	// MarkNotificationsRead Marks all notifications read.
+	// (POST /notifications/read)
+	MarkNotificationsRead(ctx context.Context, request MarkNotificationsReadRequestObject) (MarkNotificationsReadResponseObject, error)
+	// GetUnreadNotifications How many notifications are unread (the badge).
+	// (GET /notifications/unread)
+	GetUnreadNotifications(ctx context.Context, request GetUnreadNotificationsRequestObject) (GetUnreadNotificationsResponseObject, error)
+	// SearchPeople Find people by name or username.
+	// (GET /people)
+	SearchPeople(ctx context.Context, request SearchPeopleRequestObject) (SearchPeopleResponseObject, error)
+	// GetPerson A person's profile: the basics for a stranger, more for a friend.
+	// (GET /people/{id})
+	GetPerson(ctx context.Context, request GetPersonRequestObject) (GetPersonResponseObject, error)
+	// AcceptFriendRequest Accepts the request this person sent.
+	// (POST /people/{id}/accept)
+	AcceptFriendRequest(ctx context.Context, request AcceptFriendRequestRequestObject) (AcceptFriendRequestResponseObject, error)
+	// UnblockPerson Lifts a block. The friendship does not return.
+	// (DELETE /people/{id}/block)
+	UnblockPerson(ctx context.Context, request UnblockPersonRequestObject) (UnblockPersonResponseObject, error)
+	// BlockPerson Blocks: you and they disappear from each other and any friendship ends.
+	// (PUT /people/{id}/block)
+	BlockPerson(ctx context.Context, request BlockPersonRequestObject) (BlockPersonResponseObject, error)
+	// SendFriendRequest Asks to be friends.
+	// (POST /people/{id}/friend-request)
+	SendFriendRequest(ctx context.Context, request SendFriendRequestRequestObject) (SendFriendRequestResponseObject, error)
+	// RemoveFriendship Cancels a request you sent, declines one you received, or unfriends.
+	// (DELETE /people/{id}/friendship)
+	RemoveFriendship(ctx context.Context, request RemoveFriendshipRequestObject) (RemoveFriendshipResponseObject, error)
+	// ListPersonWorkouts A friend's workouts, newest first.
+	// (GET /people/{id}/workouts)
+	ListPersonWorkouts(ctx context.Context, request ListPersonWorkoutsRequestObject) (ListPersonWorkoutsResponseObject, error)
+	// GetPersonWorkout One of a friend's workouts, with its likes.
+	// (GET /people/{id}/workouts/{workout_id})
+	GetPersonWorkout(ctx context.Context, request GetPersonWorkoutRequestObject) (GetPersonWorkoutResponseObject, error)
+	// UnlikePersonWorkout Takes the like back.
+	// (DELETE /people/{id}/workouts/{workout_id}/like)
+	UnlikePersonWorkout(ctx context.Context, request UnlikePersonWorkoutRequestObject) (UnlikePersonWorkoutResponseObject, error)
+	// LikePersonWorkout Likes a friend's workout.
+	// (PUT /people/{id}/workouts/{workout_id}/like)
+	LikePersonWorkout(ctx context.Context, request LikePersonWorkoutRequestObject) (LikePersonWorkoutResponseObject, error)
+	// ListReports The report queue (moderators and admins).
+	// (GET /reports)
+	ListReports(ctx context.Context, request ListReportsRequestObject) (ListReportsResponseObject, error)
+	// CreateReport Reports a person or one of their workouts to the moderators.
+	// (POST /reports)
+	CreateReport(ctx context.Context, request CreateReportRequestObject) (CreateReportResponseObject, error)
+	// ResolveReport Marks a report handled (moderators and admins).
+	// (POST /reports/{id}/resolve)
+	ResolveReport(ctx context.Context, request ResolveReportRequestObject) (ResolveReportResponseObject, error)
 
 	// (DELETE /sets/{id})
 	DeleteSet(ctx context.Context, request DeleteSetRequestObject) (DeleteSetResponseObject, error)
@@ -5168,6 +7426,30 @@ func (sh *strictHandler) UsernameAvailable(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// ListBlocks operation middleware
+func (sh *strictHandler) ListBlocks(w http.ResponseWriter, r *http.Request) {
+	var request ListBlocksRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListBlocks(ctx, request.(ListBlocksRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListBlocks")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListBlocksResponseObject); ok {
+		if err := validResponse.VisitListBlocksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListBodyWeights operation middleware
 func (sh *strictHandler) ListBodyWeights(w http.ResponseWriter, r *http.Request, params ListBodyWeightsParams) {
 	var request ListBodyWeightsRequestObject
@@ -5299,6 +7581,54 @@ func (sh *strictHandler) GetLastSession(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetLastSessionResponseObject); ok {
 		if err := validResponse.VisitGetLastSessionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListFriends operation middleware
+func (sh *strictHandler) ListFriends(w http.ResponseWriter, r *http.Request) {
+	var request ListFriendsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListFriends(ctx, request.(ListFriendsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListFriends")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListFriendsResponseObject); ok {
+		if err := validResponse.VisitListFriendsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListFriendRequests operation middleware
+func (sh *strictHandler) ListFriendRequests(w http.ResponseWriter, r *http.Request) {
+	var request ListFriendRequestsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListFriendRequests(ctx, request.(ListFriendRequestsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListFriendRequests")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListFriendRequestsResponseObject); ok {
+		if err := validResponse.VisitListFriendRequestsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -5670,6 +8000,453 @@ func (sh *strictHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateMeResponseObject); ok {
 		if err := validResponse.VisitUpdateMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListNotifications operation middleware
+func (sh *strictHandler) ListNotifications(w http.ResponseWriter, r *http.Request, params ListNotificationsParams) {
+	var request ListNotificationsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListNotifications(ctx, request.(ListNotificationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListNotifications")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListNotificationsResponseObject); ok {
+		if err := validResponse.VisitListNotificationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// MarkNotificationsRead operation middleware
+func (sh *strictHandler) MarkNotificationsRead(w http.ResponseWriter, r *http.Request) {
+	var request MarkNotificationsReadRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MarkNotificationsRead(ctx, request.(MarkNotificationsReadRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MarkNotificationsRead")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MarkNotificationsReadResponseObject); ok {
+		if err := validResponse.VisitMarkNotificationsReadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetUnreadNotifications operation middleware
+func (sh *strictHandler) GetUnreadNotifications(w http.ResponseWriter, r *http.Request) {
+	var request GetUnreadNotificationsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetUnreadNotifications(ctx, request.(GetUnreadNotificationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetUnreadNotifications")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetUnreadNotificationsResponseObject); ok {
+		if err := validResponse.VisitGetUnreadNotificationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchPeople operation middleware
+func (sh *strictHandler) SearchPeople(w http.ResponseWriter, r *http.Request, params SearchPeopleParams) {
+	var request SearchPeopleRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchPeople(ctx, request.(SearchPeopleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchPeople")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchPeopleResponseObject); ok {
+		if err := validResponse.VisitSearchPeopleResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPerson operation middleware
+func (sh *strictHandler) GetPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request GetPersonRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPerson(ctx, request.(GetPersonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPerson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPersonResponseObject); ok {
+		if err := validResponse.VisitGetPersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AcceptFriendRequest operation middleware
+func (sh *strictHandler) AcceptFriendRequest(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request AcceptFriendRequestRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AcceptFriendRequest(ctx, request.(AcceptFriendRequestRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AcceptFriendRequest")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AcceptFriendRequestResponseObject); ok {
+		if err := validResponse.VisitAcceptFriendRequestResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UnblockPerson operation middleware
+func (sh *strictHandler) UnblockPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request UnblockPersonRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UnblockPerson(ctx, request.(UnblockPersonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UnblockPerson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UnblockPersonResponseObject); ok {
+		if err := validResponse.VisitUnblockPersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// BlockPerson operation middleware
+func (sh *strictHandler) BlockPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request BlockPersonRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.BlockPerson(ctx, request.(BlockPersonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "BlockPerson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(BlockPersonResponseObject); ok {
+		if err := validResponse.VisitBlockPersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SendFriendRequest operation middleware
+func (sh *strictHandler) SendFriendRequest(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request SendFriendRequestRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SendFriendRequest(ctx, request.(SendFriendRequestRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SendFriendRequest")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SendFriendRequestResponseObject); ok {
+		if err := validResponse.VisitSendFriendRequestResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveFriendship operation middleware
+func (sh *strictHandler) RemoveFriendship(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request RemoveFriendshipRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveFriendship(ctx, request.(RemoveFriendshipRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveFriendship")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveFriendshipResponseObject); ok {
+		if err := validResponse.VisitRemoveFriendshipResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListPersonWorkouts operation middleware
+func (sh *strictHandler) ListPersonWorkouts(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params ListPersonWorkoutsParams) {
+	var request ListPersonWorkoutsRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPersonWorkouts(ctx, request.(ListPersonWorkoutsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPersonWorkouts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListPersonWorkoutsResponseObject); ok {
+		if err := validResponse.VisitListPersonWorkoutsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPersonWorkout operation middleware
+func (sh *strictHandler) GetPersonWorkout(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, workoutId openapi_types.UUID) {
+	var request GetPersonWorkoutRequestObject
+
+	request.Id = id
+	request.WorkoutId = workoutId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPersonWorkout(ctx, request.(GetPersonWorkoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPersonWorkout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPersonWorkoutResponseObject); ok {
+		if err := validResponse.VisitGetPersonWorkoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UnlikePersonWorkout operation middleware
+func (sh *strictHandler) UnlikePersonWorkout(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, workoutId openapi_types.UUID) {
+	var request UnlikePersonWorkoutRequestObject
+
+	request.Id = id
+	request.WorkoutId = workoutId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UnlikePersonWorkout(ctx, request.(UnlikePersonWorkoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UnlikePersonWorkout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UnlikePersonWorkoutResponseObject); ok {
+		if err := validResponse.VisitUnlikePersonWorkoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// LikePersonWorkout operation middleware
+func (sh *strictHandler) LikePersonWorkout(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, workoutId openapi_types.UUID) {
+	var request LikePersonWorkoutRequestObject
+
+	request.Id = id
+	request.WorkoutId = workoutId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.LikePersonWorkout(ctx, request.(LikePersonWorkoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "LikePersonWorkout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LikePersonWorkoutResponseObject); ok {
+		if err := validResponse.VisitLikePersonWorkoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListReports operation middleware
+func (sh *strictHandler) ListReports(w http.ResponseWriter, r *http.Request, params ListReportsParams) {
+	var request ListReportsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListReports(ctx, request.(ListReportsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListReports")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListReportsResponseObject); ok {
+		if err := validResponse.VisitListReportsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateReport operation middleware
+func (sh *strictHandler) CreateReport(w http.ResponseWriter, r *http.Request) {
+	var request CreateReportRequestObject
+
+	var body CreateReportJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateReport(ctx, request.(CreateReportRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateReport")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateReportResponseObject); ok {
+		if err := validResponse.VisitCreateReportResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ResolveReport operation middleware
+func (sh *strictHandler) ResolveReport(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request ResolveReportRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResolveReport(ctx, request.(ResolveReportRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResolveReport")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResolveReportResponseObject); ok {
+		if err := validResponse.VisitResolveReportResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

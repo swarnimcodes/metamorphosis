@@ -456,6 +456,13 @@ type AuthIdentity struct {
 	LastLoginAt     *time.Time `json:"last_login_at"`
 }
 
+// blocker hides themself from blocked and the other way round; any friendship between them is removed.
+type Block struct {
+	BlockerID uuid.UUID `json:"blocker_id"`
+	BlockedID uuid.UUID `json:"blocked_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // One weigh-in per user per local calendar day (the client sends the date in the user's timezone).
 type BodyWeight struct {
 	ID         uuid.UUID       `json:"id"`
@@ -503,6 +510,15 @@ type ExerciseVariationTag struct {
 	TagID      uuid.UUID `json:"tag_id"`
 }
 
+// A friend request (pending) or a friendship (accepted). Deleting the row cancels, declines or unfriends.
+type Friendship struct {
+	RequesterID uuid.UUID  `json:"requester_id"`
+	AddresseeID uuid.UUID  `json:"addressee_id"`
+	Status      string     `json:"status"`
+	CreatedAt   time.Time  `json:"created_at"`
+	RespondedAt *time.Time `json:"responded_at"`
+}
+
 // Shared gym directory, e.g. "Golds Gym, Aundh". Plain lat/lng for now; PostGIS only if "gyms near me" needs it.
 type Gym struct {
 	ID          uuid.UUID     `json:"id"`
@@ -546,6 +562,16 @@ type MuscleGroup struct {
 	ID   uuid.UUID `json:"id"`
 	Slug string    `json:"slug"`
 	Name string    `json:"name"`
+}
+
+type Notification struct {
+	ID        uuid.UUID     `json:"id"`
+	UserID    uuid.UUID     `json:"user_id"`
+	Kind      string        `json:"kind"`
+	ActorID   uuid.UUID     `json:"actor_id"`
+	WorkoutID uuid.NullUUID `json:"workout_id"`
+	CreatedAt time.Time     `json:"created_at"`
+	ReadAt    *time.Time    `json:"read_at"`
 }
 
 // A split, e.g. "Push / Pull / Legs". forked_from_id supports copying a friend's program later.
@@ -613,6 +639,19 @@ type RefreshToken struct {
 	CreatedAt time.Time  `json:"created_at"`
 	ExpiresAt time.Time  `json:"expires_at"`
 	RevokedAt *time.Time `json:"revoked_at"`
+}
+
+// User reports of a person (or one of their workouts). Moderators and admins work the queue.
+type Report struct {
+	ID           uuid.UUID     `json:"id"`
+	ReporterID   uuid.NullUUID `json:"reporter_id"`
+	TargetUserID uuid.UUID     `json:"target_user_id"`
+	WorkoutID    uuid.NullUUID `json:"workout_id"`
+	Reason       string        `json:"reason"`
+	Status       string        `json:"status"`
+	CreatedAt    time.Time     `json:"created_at"`
+	ResolvedBy   uuid.NullUUID `json:"resolved_by"`
+	ResolvedAt   *time.Time    `json:"resolved_at"`
 }
 
 // Individual sets. Which of weight/reps/duration/distance are required depends on exercises.kind; enforced in the API.
@@ -710,4 +749,10 @@ type WorkoutExercise struct {
 type WorkoutExerciseTag struct {
 	WorkoutExerciseID uuid.UUID `json:"workout_exercise_id"`
 	TagID             uuid.UUID `json:"tag_id"`
+}
+
+type WorkoutLike struct {
+	WorkoutID uuid.UUID `json:"workout_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
