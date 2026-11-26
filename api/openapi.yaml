@@ -394,6 +394,300 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
   # <<< gyms
+  # >>> social
+  /people:
+    get:
+      operationId: searchPeople
+      tags: [social]
+      summary: Find people by name or username.
+      description: "Anyone can be found. At least 3 characters. Never the caller and never anyone blocked either way. Strangers appear without their photo."
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Person" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /people/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getPerson
+      tags: [social]
+      summary: "A person's profile: the basics for a stranger, more for a friend."
+      description: "Not found when the account is gone or has blocked the caller."
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PersonProfile" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /people/{id}/workouts:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: listPersonWorkouts
+      tags: [social]
+      summary: A friend's workouts, newest first.
+      description: "Friends only; anyone else gets 404. `limit` defaults to 20 and is clamped to 1..100; `before` is exclusive."
+      parameters:
+        - { name: limit, in: query, required: false, schema: { type: integer, format: int64 } }
+        - { name: before, in: query, required: false, schema: { type: string, format: date-time } }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/WorkoutSummary" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /people/{id}/workouts/{workout_id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: workout_id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getPersonWorkout
+      tags: [social]
+      summary: One of a friend's workouts, with its likes.
+      description: "Friends only. Workout notes are never included."
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FriendWorkout" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /people/{id}/workouts/{workout_id}/like:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: workout_id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      operationId: likePersonWorkout
+      tags: [social]
+      summary: Likes a friend's workout.
+      description: "Liking twice is one like. Tells the owner."
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Likes" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: unlikePersonWorkout
+      tags: [social]
+      summary: Takes the like back.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Likes" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /people/{id}/friend-request:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: sendFriendRequest
+      tags: [social]
+      summary: Asks to be friends.
+      description: "If they had already asked, this accepts. Asking again changes nothing. 20 new requests an hour."
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RelationshipState" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /people/{id}/accept:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: acceptFriendRequest
+      tags: [social]
+      summary: Accepts the request this person sent.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RelationshipState" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /people/{id}/friendship:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      operationId: removeFriendship
+      tags: [social]
+      summary: Cancels a request you sent, declines one you received, or unfriends.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RelationshipState" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /people/{id}/block:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      operationId: blockPerson
+      tags: [social]
+      summary: "Blocks: you and they disappear from each other and any friendship ends."
+      responses:
+        "204": { description: Blocked. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: unblockPerson
+      tags: [social]
+      summary: Lifts a block. The friendship does not return.
+      responses:
+        "204": { description: Unblocked. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /friends:
+    get:
+      operationId: listFriends
+      tags: [social]
+      summary: Your friends.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Person" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /friends/requests:
+    get:
+      operationId: listFriendRequests
+      tags: [social]
+      summary: Requests waiting for you and the ones you sent.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FriendRequests" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /blocks:
+    get:
+      operationId: listBlocks
+      tags: [social]
+      summary: People you blocked.
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Person" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [social]
+      summary: Your notifications, newest first.
+      description: "`limit` defaults to 30 and is clamped to 1..100."
+      parameters:
+        - { name: limit, in: query, required: false, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Notifications" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /notifications/unread:
+    get:
+      operationId: getUnreadNotifications
+      tags: [social]
+      summary: How many notifications are unread (the badge).
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UnreadCount" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /notifications/read:
+    post:
+      operationId: markNotificationsRead
+      tags: [social]
+      summary: Marks all notifications read.
+      responses:
+        "204": { description: Marked. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /reports:
+    post:
+      operationId: createReport
+      tags: [social]
+      summary: Reports a person or one of their workouts to the moderators.
+      description: "Reporting a workout needs you to be allowed to see it. The same open report again changes nothing. 10 reports an hour."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReportCreate" }
+      responses:
+        "204": { description: Reported. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    get:
+      operationId: listReports
+      tags: [social]
+      summary: The report queue (moderators and admins).
+      description: "`status` is `open` (default) or `resolved`."
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [open, resolved] } }
+      responses:
+        "200":
+          description: OK.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Report" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /reports/{id}/resolve:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: resolveReport
+      tags: [social]
+      summary: Marks a report handled (moderators and admins).
+      responses:
+        "204": { description: Resolved. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  # <<< social
   # >>> exercises
   /exercises:
     get:
@@ -921,6 +1215,108 @@ components:
         error: { type: string }
         similar: { type: array, items: { $ref: "#/components/schemas/Gym" } }
     # <<< gyms
+    # >>> social
+    Person:
+      type: object
+      required: [id, username, display_name, avatar_url, relationship]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_name: { type: string }
+        avatar_url: { type: string, nullable: true, description: "Friends and yourself only; strangers get null." }
+        relationship: { type: string, enum: [none, friends, request_sent, request_received, blocked, self], description: "From the caller's side." }
+    PersonProfile:
+      type: object
+      required: [id, username, display_name, avatar_url, relationship, member_since, workouts, friends_since]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_name: { type: string }
+        avatar_url: { type: string, nullable: true }
+        relationship: { type: string, enum: [none, friends, request_sent, request_received, blocked, self] }
+        member_since: { type: string, format: date-time }
+        workouts: { type: integer, format: int32, description: Finished workouts. }
+        friends_since: { type: string, format: date-time, nullable: true }
+    RelationshipState:
+      type: object
+      required: [relationship]
+      properties:
+        relationship: { type: string, enum: [none, friends, request_sent, request_received, blocked, self] }
+    FriendRequests:
+      type: object
+      required: [incoming, outgoing]
+      properties:
+        incoming: { type: array, items: { $ref: "#/components/schemas/Person" } }
+        outgoing: { type: array, items: { $ref: "#/components/schemas/Person" } }
+    FriendWorkout:
+      type: object
+      required: [workout, likes, liked]
+      properties:
+        workout: { $ref: "#/components/schemas/Workout" }
+        likes: { type: integer, format: int32 }
+        liked: { type: boolean, description: Whether the caller liked it. }
+    Likes:
+      type: object
+      required: [likes, liked]
+      properties:
+        likes: { type: integer, format: int32 }
+        liked: { type: boolean }
+    NotificationActor:
+      type: object
+      required: [id, username, display_name]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_name: { type: string }
+    Notification:
+      type: object
+      required: [id, kind, actor, workout_id, at, read]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [friend_request, friend_accepted, workout_liked] }
+        actor: { $ref: "#/components/schemas/NotificationActor" }
+        workout_id: { type: string, format: uuid, nullable: true, description: "For workout_liked: the caller's own workout." }
+        at: { type: string, format: date-time }
+        read: { type: boolean }
+    Notifications:
+      type: object
+      required: [unread, items]
+      properties:
+        unread: { type: integer, format: int32 }
+        items: { type: array, items: { $ref: "#/components/schemas/Notification" } }
+    UnreadCount:
+      type: object
+      required: [count]
+      properties:
+        count: { type: integer, format: int32 }
+    ReportCreate:
+      type: object
+      required: [user_id, reason]
+      properties:
+        user_id: { type: string, format: uuid }
+        workout_id: { type: string, format: uuid }
+        reason: { type: string, description: 1 to 500 characters. }
+    Report:
+      type: object
+      required: [id, status, reason, at, workout_id, reporter, target]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [open, resolved] }
+        reason: { type: string }
+        at: { type: string, format: date-time }
+        workout_id: { type: string, format: uuid, nullable: true }
+        reporter:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/ReportPerson" }]
+        target: { $ref: "#/components/schemas/ReportPerson" }
+    ReportPerson:
+      type: object
+      required: [id, username, display_name]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_name: { type: string }
+    # <<< social
     # >>> exercises
     Exercise:
       type: object
