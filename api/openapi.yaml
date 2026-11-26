@@ -688,6 +688,51 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
   # <<< social
+  # >>> admin
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: "People, for the role screen (admins only)."
+      description: "`q` matches a name or username (empty lists the newest); `filter=staff` lists only moderators and admins. At most 50. Never includes email."
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: filter, in: query, required: false, schema: { type: string, enum: [all, staff] } }
+      responses:
+        "200":
+          description: People.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AdminUser" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/users/{id}/role:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      operationId: setUserRole
+      tags: [admin]
+      summary: "Makes someone a moderator, or an ordinary user again (admins only)."
+      description: |
+        Not your own role, and not an admin's: admins are made and removed in the database (400 `admin_role` for an
+        admin). Saying what is already so changes and records nothing. Every change is recorded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoleChange" }
+      responses:
+        "200":
+          description: The person with their new role.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUser" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  # <<< admin
   # >>> exercises
   /exercises:
     get:
@@ -1317,6 +1362,22 @@ components:
         username: { type: string }
         display_name: { type: string }
     # <<< social
+    # >>> admin
+    AdminUser:
+      type: object
+      required: [id, username, display_name, role, member_since]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_name: { type: string }
+        role: { type: string, enum: [user, moderator, admin] }
+        member_since: { type: string, format: date-time }
+    RoleChange:
+      type: object
+      required: [role]
+      properties:
+        role: { type: string, enum: [user, moderator] }
+    # <<< admin
     # >>> exercises
     Exercise:
       type: object
