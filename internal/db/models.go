@@ -544,6 +544,8 @@ type Gym struct {
 	VerifiedBy uuid.NullUUID `json:"verified_by"`
 	// Set when this gym was merged into another: its workouts moved there and it is soft-deleted.
 	MergedIntoID uuid.NullUUID `json:"merged_into_id"`
+	NameNorm     *string       `json:"name_norm"`
+	SearchNorm   *string       `json:"search_norm"`
 }
 
 // One row per saved edit of a gym: which fields changed, from what, to what, and by whom.

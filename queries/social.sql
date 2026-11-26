@@ -1,6 +1,8 @@
 -- name: SearchPeople :many
 -- People whose username or display name contains the text (or is close to it), never the caller and never anyone
--- blocked either way. The relationship is from the caller's side.
+-- blocked either way. The relationship is from the caller's side. @pattern is @needle escaped for LIKE. The LIKE
+-- and `%` tests use the trigram indexes on lower(display_name) and username; the ranking afterwards only touches
+-- the rows that matched.
 select u.id, u.username::text as username, u.display_name, u.avatar_url,
        coalesce((select case when f.status = 'accepted' then 'friends'
                              when f.requester_id = @viewer_id then 'request_sent'
@@ -13,13 +15,13 @@ select u.id, u.username::text as username, u.display_name, u.avatar_url,
    and not exists (select 1 from blocks b
                     where (b.blocker_id = @viewer_id and b.blocked_id = u.id)
                        or (b.blocker_id = u.id and b.blocked_id = @viewer_id))
-   and (position(@needle::text in lower(u.username::text)) > 0
-        or position(@needle::text in lower(u.display_name)) > 0
-        or similarity(lower(u.display_name), @needle::text) > 0.35
-        or similarity(lower(u.username::text), @needle::text) > 0.35)
- order by (lower(u.username::text) = @needle::text) desc,
-          (lower(u.username::text) like @needle::text || '%' or lower(u.display_name) like @needle::text || '%') desc,
-          greatest(similarity(lower(u.display_name), @needle::text), similarity(lower(u.username::text), @needle::text)) desc,
+   and (u.username::text like '%' || @pattern::text || '%' escape '\'
+        or lower(u.display_name) like '%' || @pattern::text || '%' escape '\'
+        or u.username::text % @needle::text
+        or lower(u.display_name) % @needle::text)
+ order by (u.username::text = @needle::text) desc,
+          (u.username::text like @pattern::text || '%' escape '\' or lower(u.display_name) like @pattern::text || '%' escape '\') desc,
+          greatest(similarity(lower(u.display_name), @needle::text), similarity(u.username::text, @needle::text)) desc,
           u.display_name
  limit @max_rows;
 

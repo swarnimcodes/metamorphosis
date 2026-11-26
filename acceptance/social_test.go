@@ -311,3 +311,37 @@ func TestSocialRateLimits(t *testing.T) {
 	}
 	errBody(t, post(t, "/reports", r.Token, map[string]any{"user_id": newUser(t, "reported").ID, "reason": "spam"}), 429, "too many reports, try again later", "rate_limited")
 }
+
+func TestFriendsSeeEachOthersActivityCalendar(t *testing.T) {
+	t.Parallel()
+	owner, friend, stranger := newUser(t, "calo"), newUser(t, "calf"), newUser(t, "cals")
+	w := created(t, post(t, "/workouts", owner.Token, map[string]any{})).Get("id").Str()
+	bench := exerciseBySlug(t, owner.Token, "bench-press")
+	we := created(t, post(t, "/workouts/"+w+"/exercises", owner.Token, map[string]any{"exercise_id": bench}))
+	created(t, post(t, "/workout-exercises/"+we.Get("id").Str()+"/sets", owner.Token, map[string]any{"weight_kg": 60, "reps": 5}))
+	ok(t, post(t, "/workouts/"+w+"/finish", owner.Token, map[string]any{}))
+
+	// Not a friend: nothing, not even that the person exists.
+	status(t, get(t, "/people/"+owner.ID+"/consistency", stranger.Token), 404)
+	status(t, get(t, "/people/"+owner.ID+"/consistency", friend.Token), 404)
+
+	befriend(t, owner, friend)
+	c := ok(t, get(t, "/people/"+owner.ID+"/consistency", friend.Token))
+	eq(t, "calendar field count", c.JSON.Len(), 6)
+	num(t, "one workout in the totals", c.Get("totals").Get("workouts"), 1)
+	num(t, "one active day", c.Get("totals").Get("active_days"), 1)
+	isTrue(t, "a day with a workout", c.Get("days").Len() >= 1)
+	// It is the owner's calendar, the same as they see for themselves.
+	mine := ok(t, get(t, "/stats/consistency", owner.Token))
+	str(t, "same window", c.Get("from"), mine.Get("from").Str())
+	num(t, "same totals", c.Get("totals").Get("sets"), mine.Get("totals").Get("sets").Float())
+	// The friend's own calendar is empty of that workout.
+	num(t, "not the viewer's", ok(t, get(t, "/stats/consistency", friend.Token)).Get("totals").Get("workouts"), 0)
+
+	ok(t, get(t, "/people/"+owner.ID+"/consistency?weeks=1", friend.Token))
+	errBody(t, get(t, "/people/"+owner.ID+"/consistency?weeks=abc", friend.Token), 400, "", "")
+	unauthorized(t, get(t, "/people/"+owner.ID+"/consistency", ""))
+
+	ok(t, del(t, "/people/"+owner.ID+"/friendship", friend.Token))
+	status(t, get(t, "/people/"+owner.ID+"/consistency", friend.Token), 404)
+}

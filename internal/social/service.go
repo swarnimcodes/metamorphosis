@@ -154,7 +154,7 @@ func (s *Service) Search(ctx context.Context, viewer uuid.UUID, q string) ([]Per
 	if n > maxSearchChars {
 		needle = string([]rune(needle)[:maxSearchChars])
 	}
-	rows, err := s.store.SearchPeople(ctx, db.SearchPeopleParams{ViewerID: viewer, Needle: needle, MaxRows: searchRows})
+	rows, err := s.store.SearchPeople(ctx, db.SearchPeopleParams{ViewerID: viewer, Needle: needle, Pattern: likeEscape(needle), MaxRows: searchRows})
 	if err != nil {
 		return nil, err
 	}
@@ -166,6 +166,11 @@ func (s *Service) Search(ctx context.Context, viewer uuid.UUID, q string) ([]Per
 		})
 	}
 	return out, nil
+}
+
+// likeEscape makes text safe to put inside a LIKE pattern: %, _ and the escape character itself match literally.
+func likeEscape(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
 // Profile is one person's page as the caller may see it.

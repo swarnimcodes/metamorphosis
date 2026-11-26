@@ -449,6 +449,25 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /people/{id}/consistency:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getPersonConsistency
+      tags: [social]
+      summary: "A friend's activity calendar, for their profile's heatmap."
+      description: "The same calendar as `/stats/consistency`, for a friend (anyone else gets 404). Days are in the friend's own time zone. `weeks` is clamped to 1..104 (default 53)."
+      parameters:
+        - { name: weeks, in: query, required: false, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: The calendar.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConsistencyResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /people/{id}/workouts/{workout_id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }

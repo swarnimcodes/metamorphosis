@@ -30,7 +30,7 @@ user="$(psql -Atc "select username::text from users order by created_at limit 1"
 [ -n "$user" ] || { echo "the source database has no users: nothing to compare" >&2; exit 1; }
 
 run() { # name, binary, port
-  (cd "$tmp" && exec env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="postgres://$PGUSER@$PGHOST/$db" JWT_SECRET=compare \
+  (cd "$tmp" && exec env -i PATH="$PATH" HOME="$HOME" DATABASE_URL="postgres://$PGUSER@$PGHOST/$db" JWT_SECRET=compare-secret-0123456789abcdef-padding \
      DEV_LOGIN=true AUTH_RATE_LIMIT_PER_MINUTE=0 BIND_ADDR="127.0.0.1:$3" "$2") >"$tmp/$1.log" 2>&1 &
   pids+=($!)
 }

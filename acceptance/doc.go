@@ -13,7 +13,7 @@
 //	acceptance/run.sh        # server on 127.0.0.1:3101, database metamorph_accept_go
 //
 // run.sh drops and recreates the throwaway database (psql -U postgres -h localhost), builds and
-// starts the server with DEV_LOGIN=true RUN_MIGRATIONS=true JWT_SECRET=acceptance, waits
+// starts the server with DEV_LOGIN=true RUN_MIGRATIONS=true JWT_SECRET=<32+ characters>, waits
 // for GET /health, runs go test, and always stops the server and drops the database afterwards.
 //
 // To run against a server you started yourself (it must have DEV_LOGIN=true and a migrated

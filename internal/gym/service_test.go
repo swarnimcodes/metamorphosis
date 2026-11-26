@@ -17,30 +17,36 @@ import (
 )
 
 type fakeStore struct {
-	similar  []db.SimilarGymsRow
-	searched db.SearchGymsParams
-	checked  *db.SimilarGymsParams
-	inserted []db.InsertGymParams
-	current  db.LockGymRow
-	missing  bool
-	updates  []db.UpdateGymParams
-	edits    []db.InsertGymEditParams
-	listed   []db.ListGymEditsRow
-	chains   []string
-	role     db.UserRole // zero value means an ordinary user
-	recent   int32
-	verified []db.SetGymVerifiedParams
-	deleted  []uuid.UUID
-	merged   []db.MarkGymMergedParams
-	moved    []db.MoveGymWorkoutsParams
-	userGyms []db.MoveUserGymsParams
-	dropped  []uuid.UUID
-	edit     db.GetGymEditRow
-	locks    map[uuid.UUID]db.LockGymRow
+	similar   []db.SimilarGymsRow
+	searched  db.SearchGymsParams
+	listedAll db.ListGymsParams
+	checked   *db.SimilarGymsParams
+	inserted  []db.InsertGymParams
+	current   db.LockGymRow
+	missing   bool
+	updates   []db.UpdateGymParams
+	edits     []db.InsertGymEditParams
+	listed    []db.ListGymEditsRow
+	chains    []string
+	role      db.UserRole // zero value means an ordinary user
+	recent    int32
+	verified  []db.SetGymVerifiedParams
+	deleted   []uuid.UUID
+	merged    []db.MarkGymMergedParams
+	moved     []db.MoveGymWorkoutsParams
+	userGyms  []db.MoveUserGymsParams
+	dropped   []uuid.UUID
+	edit      db.GetGymEditRow
+	locks     map[uuid.UUID]db.LockGymRow
 }
 
 func (f *fakeStore) SearchGyms(_ context.Context, a db.SearchGymsParams) ([]db.SearchGymsRow, error) {
 	f.searched = a
+	return nil, nil
+}
+
+func (f *fakeStore) ListGyms(_ context.Context, a db.ListGymsParams) ([]db.ListGymsRow, error) {
+	f.listedAll = a
 	return nil, nil
 }
 
@@ -550,5 +556,18 @@ func TestChainsIsNeverNull(t *testing.T) {
 	got, err := gym.NewTestService(&fakeStore{}).Chains(context.Background())
 	if err != nil || got == nil || len(got) != 0 {
 		t.Fatalf("got %v, %v", got, err)
+	}
+}
+
+func TestEmptySearchListsTheDirectoryInsteadOfSearching(t *testing.T) {
+	for _, q := range []string{"", "   ", "\t\n"} {
+		f := &fakeStore{}
+		got, err := gym.NewTestService(f).Search(context.Background(), uuid.New(), q, ptr(int64(7)))
+		if err != nil || got == nil {
+			t.Fatalf("%q: %v, %v", q, got, err)
+		}
+		if f.listedAll.MaxRows != 7 || f.searched.Q != "" || f.searched.MaxRows != 0 {
+			t.Errorf("%q: listed %+v, searched %+v", q, f.listedAll, f.searched)
+		}
 	}
 }

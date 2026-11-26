@@ -3,6 +3,7 @@ package workout_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -305,5 +306,31 @@ func TestExerciseUnitIsValidatedAndOwned(t *testing.T) {
 	f.unitRows = 0
 	if err := s.SetExerciseUnit(ctx, user, id, ptr("metric")); kind(err) != domain.KindNotFound {
 		t.Fatalf("someone else's exercise should be not found, got %v", err)
+	}
+}
+
+func TestFreeTextHasALengthCap(t *testing.T) {
+	ctx, id := context.Background(), uuid.New()
+	long := func(n int) *string { s := strings.Repeat("é", n); return &s } // counts characters, not bytes
+	s := workout.NewTestService(&fakeStore{})
+	for name, err := range map[string]error{
+		"workout title": func() error { _, e := s.Create(ctx, user, workout.CreateInput{Title: long(121)}); return e }(),
+		"workout notes": func() error { _, e := s.Create(ctx, user, workout.CreateInput{Notes: long(2001)}); return e }(),
+		"title update":  func() error { _, e := s.Update(ctx, user, id, workout.UpdateInput{Title: long(121)}); return e }(),
+		"notes update":  func() error { _, e := s.Update(ctx, user, id, workout.UpdateInput{Notes: long(2001)}); return e }(),
+		"exercise notes": func() error {
+			_, e := s.AddExercise(ctx, user, id, workout.AddExerciseInput{ExerciseID: &id, Notes: long(1001)})
+			return e
+		}(),
+		"set note":        func() error { _, e := s.AddSet(ctx, user, id, workout.SetInput{Note: long(501)}); return e }(),
+		"set note update": func() error { _, e := s.UpdateSet(ctx, user, id, workout.SetPatch{Note: long(501)}); return e }(),
+	} {
+		if kind(err) != domain.KindInvalid || !strings.Contains(err.Error(), "at most") {
+			t.Errorf("%s: got %v, want invalid with a length message", name, err)
+		}
+	}
+	// Right at the cap is fine.
+	if _, err := s.AddSet(ctx, user, id, workout.SetInput{Note: long(500)}); err != nil {
+		t.Errorf("a note of exactly 500 characters: %v", err)
 	}
 }

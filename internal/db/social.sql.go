@@ -739,19 +739,20 @@ select u.id, u.username::text as username, u.display_name, u.avatar_url,
    and not exists (select 1 from blocks b
                     where (b.blocker_id = $1 and b.blocked_id = u.id)
                        or (b.blocker_id = u.id and b.blocked_id = $1))
-   and (position($2::text in lower(u.username::text)) > 0
-        or position($2::text in lower(u.display_name)) > 0
-        or similarity(lower(u.display_name), $2::text) > 0.35
-        or similarity(lower(u.username::text), $2::text) > 0.35)
- order by (lower(u.username::text) = $2::text) desc,
-          (lower(u.username::text) like $2::text || '%' or lower(u.display_name) like $2::text || '%') desc,
-          greatest(similarity(lower(u.display_name), $2::text), similarity(lower(u.username::text), $2::text)) desc,
+   and (u.username::text like '%' || $2::text || '%' escape '\'
+        or lower(u.display_name) like '%' || $2::text || '%' escape '\'
+        or u.username::text % $3::text
+        or lower(u.display_name) % $3::text)
+ order by (u.username::text = $3::text) desc,
+          (u.username::text like $2::text || '%' escape '\' or lower(u.display_name) like $2::text || '%' escape '\') desc,
+          greatest(similarity(lower(u.display_name), $3::text), similarity(u.username::text, $3::text)) desc,
           u.display_name
- limit $3
+ limit $4
 `
 
 type SearchPeopleParams struct {
 	ViewerID uuid.UUID `json:"viewer_id"`
+	Pattern  string    `json:"pattern"`
 	Needle   string    `json:"needle"`
 	MaxRows  int32     `json:"max_rows"`
 }
@@ -765,9 +766,16 @@ type SearchPeopleRow struct {
 }
 
 // People whose username or display name contains the text (or is close to it), never the caller and never anyone
-// blocked either way. The relationship is from the caller's side.
+// blocked either way. The relationship is from the caller's side. @pattern is @needle escaped for LIKE. The LIKE
+// and `%` tests use the trigram indexes on lower(display_name) and username; the ranking afterwards only touches
+// the rows that matched.
 func (q *Queries) SearchPeople(ctx context.Context, arg SearchPeopleParams) ([]SearchPeopleRow, error) {
-	rows, err := q.db.Query(ctx, searchPeople, arg.ViewerID, arg.Needle, arg.MaxRows)
+	rows, err := q.db.Query(ctx, searchPeople,
+		arg.ViewerID,
+		arg.Pattern,
+		arg.Needle,
+		arg.MaxRows,
+	)
 	if err != nil {
 		return nil, err
 	}

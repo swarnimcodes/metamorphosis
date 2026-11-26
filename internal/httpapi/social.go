@@ -8,6 +8,7 @@ import (
 	"github.com/smarniw/metamorphosis/internal/db"
 	"github.com/smarniw/metamorphosis/internal/httpapi/gen"
 	"github.com/smarniw/metamorphosis/internal/social"
+	"github.com/smarniw/metamorphosis/internal/stats"
 	"github.com/smarniw/metamorphosis/internal/workout"
 )
 
@@ -16,11 +17,12 @@ import (
 type socialAPI struct {
 	soc      *social.Service
 	workouts *workout.Service
+	stats    *stats.Service
 }
 
 func newSocialAPI(d Deps, q *db.Queries) socialAPI {
 	inTx := func(ctx context.Context, fn func(*db.Queries) error) error { return db.InTx(ctx, d.DB, fn) }
-	return socialAPI{soc: social.NewService(q, inTx), workouts: workout.NewService(q, inTx)}
+	return socialAPI{soc: social.NewService(q, inTx), workouts: workout.NewService(q, inTx), stats: stats.NewService(q)}
 }
 
 func personOut(p social.Person) gen.Person {
@@ -262,4 +264,19 @@ func (a socialAPI) ResolveReport(ctx context.Context, req gen.ResolveReportReque
 		return nil, err
 	}
 	return gen.ResolveReport204Response{}, nil
+}
+
+func (a socialAPI) GetPersonConsistency(ctx context.Context, req gen.GetPersonConsistencyRequestObject) (gen.GetPersonConsistencyResponseObject, error) {
+	if err := a.soc.CanView(ctx, userFrom(ctx), req.Id); err != nil {
+		return nil, err
+	}
+	weeks := int64(stats.DefaultWeeks)
+	if req.Params.Weeks != nil {
+		weeks = *req.Params.Weeks
+	}
+	c, err := a.stats.Consistency(ctx, req.Id, weeks)
+	if err != nil {
+		return nil, err
+	}
+	return gen.GetPersonConsistency200JSONResponse(consistencyOut(c)), nil
 }
