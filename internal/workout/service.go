@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -211,6 +212,31 @@ type SetPatch struct {
 	CompletedAt *time.Time
 }
 
+// Longest free text a workout may hold, in characters. The notes are the only unbounded text in the app, and
+// without a cap one account could store megabytes in every workout.
+const (
+	maxTitleChars        = 120
+	maxWorkoutNoteChars  = 2000
+	maxExerciseNoteChars = 1000
+	maxSetNoteChars      = 500
+)
+
+// validText refuses text longer than max characters.
+func validText(label string, v *string, max int) error {
+	if v != nil && utf8.RuneCountInString(*v) > max {
+		return domain.Invalid("%s must be at most %d characters", label, max)
+	}
+	return nil
+}
+
+// firstError is the first of several joined errors, so a client gets one clear message.
+func firstError(err error) error {
+	if u, ok := err.(interface{ Unwrap() []error }); ok {
+		return u.Unwrap()[0]
+	}
+	return err
+}
+
 func notFound(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.NotFound()
@@ -302,6 +328,9 @@ func validRir(v *int16) error {
 // Create starts a workout. Without a gym it starts where the caller last trained; the time zone is the device's, or
 // failing that the account's, so every new workout records the zone it happened in.
 func (s *Service) Create(ctx context.Context, user uuid.UUID, in CreateInput) (Workout, error) {
+	if err := errors.Join(validText("title", in.Title, maxTitleChars), validText("notes", in.Notes, maxWorkoutNoteChars)); err != nil {
+		return Workout{}, firstError(err)
+	}
 	var tz string
 	if in.Timezone != nil {
 		known, err := s.store.WorkoutTimezoneKnown(ctx, *in.Timezone)
@@ -418,6 +447,9 @@ func load(ctx context.Context, st Store, user, id uuid.UUID) (Workout, error) {
 
 // Update changes a workout. Omitted fields are left unchanged; a field cannot be cleared back to null.
 func (s *Service) Update(ctx context.Context, user, id uuid.UUID, in UpdateInput) (Workout, error) {
+	if err := errors.Join(validText("title", in.Title, maxTitleChars), validText("notes", in.Notes, maxWorkoutNoteChars)); err != nil {
+		return Workout{}, firstError(err)
+	}
 	_, err := s.store.UpdateWorkout(ctx, db.UpdateWorkoutParams{
 		ID: id, UserID: user, Title: in.Title, Notes: in.Notes, GymID: nullUUID(in.GymID),
 		StartedAt: in.StartedAt, EndedAt: in.EndedAt,
@@ -451,6 +483,9 @@ func (s *Service) Remove(ctx context.Context, user, id uuid.UUID) error {
 // AddExercise appends an exercise to the workout. The workout row is locked so concurrent adds get distinct
 // positions, and a merged exercise is replaced by the one it was merged into so history lands on the canonical one.
 func (s *Service) AddExercise(ctx context.Context, user, workoutID uuid.UUID, in AddExerciseInput) (Exercise, error) {
+	if err := validText("notes", in.Notes, maxExerciseNoteChars); err != nil {
+		return Exercise{}, err
+	}
 	if in.ExerciseID == nil {
 		return Exercise{}, domain.Invalid("missing field `exercise_id`")
 	}
@@ -560,6 +595,9 @@ func (s *Service) RemoveExercise(ctx context.Context, user, id uuid.UUID) error 
 // AddSet appends a set to a logged exercise (position after the highest remaining one) under a lock on the
 // exercise. The set type defaults to working and completed_at to now.
 func (s *Service) AddSet(ctx context.Context, user, workoutExerciseID uuid.UUID, in SetInput) (Set, error) {
+	if err := validText("note", in.Note, maxSetNoteChars); err != nil {
+		return Set{}, err
+	}
 	if err := validSetType(in.SetType); err != nil {
 		return Set{}, err
 	}
@@ -595,6 +633,9 @@ func (s *Service) AddSet(ctx context.Context, user, workoutExerciseID uuid.UUID,
 
 // UpdateSet changes a set. Omitted fields, and null for any field but rir, leave it unchanged; null clears rir.
 func (s *Service) UpdateSet(ctx context.Context, user, id uuid.UUID, in SetPatch) (Set, error) {
+	if err := validText("note", in.Note, maxSetNoteChars); err != nil {
+		return Set{}, err
+	}
 	if err := validSetType(in.SetType); err != nil {
 		return Set{}, err
 	}

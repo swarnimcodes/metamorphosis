@@ -39,17 +39,22 @@ func (a statsAPI) GetStatsConsistency(ctx context.Context, req gen.GetStatsConsi
 	if err != nil {
 		return nil, err
 	}
+	return gen.GetStatsConsistency200JSONResponse(consistencyOut(c)), nil
+}
+
+// consistencyOut is a calendar as the API sends it: the caller's own, or a friend's.
+func consistencyOut(c stats.Consistency) gen.ConsistencyResponse {
 	days := make([]gen.ConsistencyDay, 0, len(c.Days))
 	for _, d := range c.Days {
 		days = append(days, gen.ConsistencyDay{Date: statsDay(d.Date), Workouts: d.Workouts, Sets: d.Sets, VolumeKg: statsNum(d.Volume)})
 	}
-	return gen.GetStatsConsistency200JSONResponse{
+	return gen.ConsistencyResponse{
 		Timezone: c.Timezone, From: statsDay(c.From), To: statsDay(c.To), Days: days,
 		Totals: gen.ConsistencyTotals{
 			Workouts: c.Totals.Workouts, ActiveDays: c.Totals.ActiveDays, Sets: c.Totals.Sets, VolumeKg: statsNum(c.Totals.Volume),
 		},
 		Streak: gen.ConsistencyStreak{CurrentWeeks: int64(c.CurrentWeeks), LongestWeeks: int64(c.LongestWeeks)},
-	}, nil
+	}
 }
 
 func (a statsAPI) ListStatsExercises(ctx context.Context, _ gen.ListStatsExercisesRequestObject) (gen.ListStatsExercisesResponseObject, error) {

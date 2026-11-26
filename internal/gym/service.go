@@ -44,6 +44,7 @@ type Gym struct {
 // Store is the database access the service needs. *db.Queries satisfies it.
 type Store interface {
 	SearchGyms(ctx context.Context, arg db.SearchGymsParams) ([]db.SearchGymsRow, error)
+	ListGyms(ctx context.Context, arg db.ListGymsParams) ([]db.ListGymsRow, error)
 	SimilarGyms(ctx context.Context, arg db.SimilarGymsParams) ([]db.SimilarGymsRow, error)
 	InsertGym(ctx context.Context, arg db.InsertGymParams) (db.InsertGymRow, error)
 	GetGym(ctx context.Context, arg db.GetGymParams) (db.GetGymRow, error)
@@ -82,11 +83,22 @@ func NewService(store Store, inTx func(ctx context.Context, fn func(*db.Queries)
 // Search lists gyms matching q, best match first and then the caller's most recently used, then verified, then by
 // name. limit (nil: 20) is clamped to 1..50.
 func (s *Service) Search(ctx context.Context, user uuid.UUID, q string, limit *int64) ([]Gym, error) {
+	out := []Gym{}
+	if strings.TrimSpace(q) == "" {
+		// Nothing to search for: the directory in the caller's last-used order.
+		rows, err := s.store.ListGyms(ctx, db.ListGymsParams{UserID: user, MaxRows: clampLimit(limit)})
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range rows {
+			out = append(out, fromRow(db.InsertGymRow(r)))
+		}
+		return out, nil
+	}
 	rows, err := s.store.SearchGyms(ctx, db.SearchGymsParams{Q: q, UserID: user, MaxRows: clampLimit(limit)})
 	if err != nil {
 		return nil, err
 	}
-	out := make([]Gym, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, fromRow(db.InsertGymRow(r)))
 	}

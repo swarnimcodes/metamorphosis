@@ -308,6 +308,71 @@ func (q *Queries) ListGymEdits(ctx context.Context, arg ListGymEditsParams) ([]L
 	return items, nil
 }
 
+const listGyms = `-- name: ListGyms :many
+select g.id, g.name, g.chain, g.area, g.address, g.city, g.lat, g.lng, g.maps_url, g.verified, g.country_code, g.state
+  from gyms g
+ where g.deleted_at is null
+ order by (select max(w.started_at) from workouts w
+            where w.gym_id = g.id and w.user_id = $1 and w.deleted_at is null) desc nulls last,
+          g.verified desc, g.name
+ limit $2
+`
+
+type ListGymsParams struct {
+	UserID  uuid.UUID `json:"user_id"`
+	MaxRows int32     `json:"max_rows"`
+}
+
+type ListGymsRow struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Chain       *string   `json:"chain"`
+	Area        *string   `json:"area"`
+	Address     *string   `json:"address"`
+	City        *string   `json:"city"`
+	Lat         *float64  `json:"lat"`
+	Lng         *float64  `json:"lng"`
+	MapsUrl     *string   `json:"maps_url"`
+	Verified    bool      `json:"verified"`
+	CountryCode *string   `json:"country_code"`
+	State       *string   `json:"state"`
+}
+
+// The directory with no search text: the gyms the caller trained at most recently first, then verified ones, then by
+// name.
+func (q *Queries) ListGyms(ctx context.Context, arg ListGymsParams) ([]ListGymsRow, error) {
+	rows, err := q.db.Query(ctx, listGyms, arg.UserID, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListGymsRow
+	for rows.Next() {
+		var i ListGymsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Chain,
+			&i.Area,
+			&i.Address,
+			&i.City,
+			&i.Lat,
+			&i.Lng,
+			&i.MapsUrl,
+			&i.Verified,
+			&i.CountryCode,
+			&i.State,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockGym = `-- name: LockGym :one
 select id, name, chain, area, address, city, lat, lng, maps_url, verified, country_code, state
   from gyms where id = $1 and deleted_at is null for update
@@ -398,35 +463,29 @@ func (q *Queries) MoveUserGyms(ctx context.Context, arg MoveUserGymsParams) erro
 
 const searchGyms = `-- name: SearchGyms :many
 with q as (
-    select btrim(lower(regexp_replace(replace(replace($2::text, '''', ''), '’', ''),
-                                      '[^[:alnum:]]+', ' ', 'g'))) as nq
+    select x.nq,
+           coalesce((select w from unnest(string_to_array(x.nq, ' ')) as w order by length(w) desc, w limit 1), '') as anchor
+      from (select btrim(lower(regexp_replace(replace(replace($2::text, '''', ''), '’', ''), '[^[:alnum:]]+', ' ', 'g'))) as nq) x
 ), scored as (
     select g.id, g.name, g.chain, g.area, g.address, g.city, g.lat, g.lng, g.maps_url, g.verified, g.country_code, g.state,
            (select max(w.started_at) from workouts w
              where w.gym_id = g.id and w.user_id = $3 and w.deleted_at is null) as last_used,
-           similarity(n.nname, q.nq) as score,
-           -- every word of the query appears in the name, area or city, in any order
+           similarity(g.name_norm, q.nq) as score,
            not exists (
                select 1 from unnest(string_to_array(q.nq, ' ')) as w
-                where w <> '' and n.hay not like '%' || w || '%'
+                where w <> '' and g.search_norm not like '%' || w || '%'
            ) as contains
       from gyms g
      cross join q
-     cross join lateral (
-         select btrim(lower(regexp_replace(replace(replace(g.name, '''', ''), '’', ''),
-                                           '[^[:alnum:]]+', ' ', 'g'))) as nname,
-                btrim(lower(regexp_replace(replace(replace(
-                    g.name || ' ' || coalesce(g.area, '') || ' ' || coalesce(g.city, ''), '''', ''), '’', ''),
-                    '[^[:alnum:]]+', ' ', 'g'))) as hay
-     ) n
      where g.deleted_at is null
+       and ((g.search_norm like '%' || q.anchor || '%'
+             and not exists (select 1 from unnest(string_to_array(q.nq, ' ')) as w
+                              where w <> '' and g.search_norm not like '%' || w || '%'))
+            or g.name_norm % q.nq)
 )
 select id, name, chain, area, address, city, lat, lng, maps_url, verified, country_code, state
-  from scored, q
- where q.nq = '' or contains or score > 0.3
- order by (case when q.nq = '' then true else contains end) desc,
-          (case when q.nq = '' then 0 else score end) desc,
-          last_used desc nulls last, verified desc, name
+  from scored
+ order by contains desc, score desc, last_used desc nulls last, verified desc, name
  limit $1
 `
 
@@ -451,9 +510,12 @@ type SearchGymsRow struct {
 	State       *string   `json:"state"`
 }
 
-// Name search by trigram similarity or substring. Both sides are normalised (apostrophes dropped, punctuation
-// squeezed) so "gold's gym" finds "Golds Gym". Ranking: better match first, then the gyms the caller trained at
-// most recently, then verified ones, then by name. An empty query lists everything in that last-used/verified order.
+// Matches when every word of the query appears in the name, area or city (any order), or the name is similar
+// enough. Both sides are normalised the same way (apostrophes dropped, punctuation squeezed), so "gold's gym" finds
+// "Golds Gym". The query's longest word narrows the candidates through the trigram index on search_norm and the
+// name similarity through the one on name_norm; the every-word test then runs only on those. Ranking: whole
+// matches first, then the better name match, then the gyms the caller trained at most recently, then verified
+// ones, then by name. Use ListGyms for an empty query.
 func (q *Queries) SearchGyms(ctx context.Context, arg SearchGymsParams) ([]SearchGymsRow, error) {
 	rows, err := q.db.Query(ctx, searchGyms, arg.MaxRows, arg.Q, arg.UserID)
 	if err != nil {
@@ -507,27 +569,21 @@ func (q *Queries) SetGymVerified(ctx context.Context, arg SetGymVerifiedParams) 
 
 const similarGyms = `-- name: SimilarGyms :many
 with q as (
-    select btrim(lower(regexp_replace(replace(replace($2::text, '''', ''), '’', ''),
-                                      '[^[:alnum:]]+', ' ', 'g'))) as nq
-), cand as (
-    select g.id, g.name, g.chain, g.area, g.address, g.city, g.lat, g.lng, g.maps_url, g.verified, g.country_code, g.state,
-           similarity(btrim(lower(regexp_replace(replace(replace(g.name, '''', ''), '’', ''),
-                                                 '[^[:alnum:]]+', ' ', 'g'))), q.nq) as score
-      from gyms g, q
-     where g.deleted_at is null
-       and ($3::text is null or lower(g.city) = lower($3))
+    select btrim(lower(regexp_replace(replace(replace($3::text, '''', ''), '’', ''), '[^[:alnum:]]+', ' ', 'g'))) as nq
 )
-select id, name, chain, area, address, city, lat, lng, maps_url, verified, country_code, state
-  from cand
- where score > 0.5
- order by score desc, name
- limit $1
+select g.id, g.name, g.chain, g.area, g.address, g.city, g.lat, g.lng, g.maps_url, g.verified, g.country_code, g.state
+  from gyms g, q
+ where g.deleted_at is null
+   and g.name_norm % q.nq and similarity(g.name_norm, q.nq) > 0.5
+   and ($1::text is null or lower(g.city) = lower($1))
+ order by similarity(g.name_norm, q.nq) desc, g.name
+ limit $2
 `
 
 type SimilarGymsParams struct {
+	City    *string `json:"city"`
 	MaxRows int32   `json:"max_rows"`
 	Name    string  `json:"name"`
-	City    *string `json:"city"`
 }
 
 type SimilarGymsRow struct {
@@ -546,8 +602,9 @@ type SimilarGymsRow struct {
 }
 
 // Gyms whose name is close to @name (in the same city when one is given): the near-duplicate guard's candidates.
+// `%` lets the trigram index find the candidates; the score then keeps only the close ones.
 func (q *Queries) SimilarGyms(ctx context.Context, arg SimilarGymsParams) ([]SimilarGymsRow, error) {
-	rows, err := q.db.Query(ctx, similarGyms, arg.MaxRows, arg.Name, arg.City)
+	rows, err := q.db.Query(ctx, similarGyms, arg.City, arg.MaxRows, arg.Name)
 	if err != nil {
 		return nil, err
 	}

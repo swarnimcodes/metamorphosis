@@ -1060,6 +1060,11 @@ type SearchPeopleParams struct {
 	Q string `form:"q" json:"q"`
 }
 
+// GetPersonConsistencyParams defines parameters for GetPersonConsistency.
+type GetPersonConsistencyParams struct {
+	Weeks *int64 `form:"weeks,omitempty" json:"weeks,omitempty"`
+}
+
 // RemoveFriendshipParams defines parameters for RemoveFriendship.
 type RemoveFriendshipParams struct {
 	PendingOnly *bool `form:"pending_only,omitempty" json:"pending_only,omitempty"`
@@ -1330,6 +1335,9 @@ type ServerInterface interface {
 	// BlockPerson Blocks: you and they disappear from each other and any friendship ends.
 	// (PUT /people/{id}/block)
 	BlockPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// GetPersonConsistency A friend's activity calendar, for their profile's heatmap.
+	// (GET /people/{id}/consistency)
+	GetPersonConsistency(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params GetPersonConsistencyParams)
 	// SendFriendRequest Asks to be friends.
 	// (POST /people/{id}/friend-request)
 	SendFriendRequest(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
@@ -1623,6 +1631,12 @@ func (_ Unimplemented) UnblockPerson(w http.ResponseWriter, r *http.Request, id 
 // BlockPerson Blocks: you and they disappear from each other and any friendship ends.
 // (PUT /people/{id}/block)
 func (_ Unimplemented) BlockPerson(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetPersonConsistency A friend's activity calendar, for their profile's heatmap.
+// (GET /people/{id}/consistency)
+func (_ Unimplemented) GetPersonConsistency(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params GetPersonConsistencyParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2784,6 +2798,48 @@ func (siw *ServerInterfaceWrapper) BlockPerson(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// GetPersonConsistency operation middleware
+func (siw *ServerInterfaceWrapper) GetPersonConsistency(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetPersonConsistencyParams
+
+	// ------------- Optional query parameter "weeks" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "weeks", r.URL.Query(), &params.Weeks, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "weeks"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "weeks", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPersonConsistency(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // SendFriendRequest operation middleware
 func (siw *ServerInterfaceWrapper) SendFriendRequest(w http.ResponseWriter, r *http.Request) {
 
@@ -3692,6 +3748,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/people/{id}/workouts", wrapper.ListPersonWorkouts)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/people/{id}/consistency", wrapper.GetPersonConsistency)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/people/{id}/workouts/{workout_id}", wrapper.GetPersonWorkout)
@@ -5880,6 +5939,71 @@ func (response BlockPerson404JSONResponse) VisitBlockPersonResponse(w http.Respo
 	return err
 }
 
+type GetPersonConsistencyRequestObject struct {
+	Id     openapi_types.UUID `json:"id"`
+	Params GetPersonConsistencyParams
+}
+
+type GetPersonConsistencyResponseObject interface {
+	VisitGetPersonConsistencyResponse(w http.ResponseWriter) error
+}
+
+type GetPersonConsistency200JSONResponse ConsistencyResponse
+
+func (response GetPersonConsistency200JSONResponse) VisitGetPersonConsistencyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPersonConsistency400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetPersonConsistency400JSONResponse) VisitGetPersonConsistencyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPersonConsistency401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetPersonConsistency401JSONResponse) VisitGetPersonConsistencyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPersonConsistency404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetPersonConsistency404JSONResponse) VisitGetPersonConsistencyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SendFriendRequestRequestObject struct {
 	Id openapi_types.UUID `json:"id"`
 }
@@ -7522,6 +7646,9 @@ type StrictServerInterface interface {
 	// BlockPerson Blocks: you and they disappear from each other and any friendship ends.
 	// (PUT /people/{id}/block)
 	BlockPerson(ctx context.Context, request BlockPersonRequestObject) (BlockPersonResponseObject, error)
+	// GetPersonConsistency A friend's activity calendar, for their profile's heatmap.
+	// (GET /people/{id}/consistency)
+	GetPersonConsistency(ctx context.Context, request GetPersonConsistencyRequestObject) (GetPersonConsistencyResponseObject, error)
 	// SendFriendRequest Asks to be friends.
 	// (POST /people/{id}/friend-request)
 	SendFriendRequest(ctx context.Context, request SendFriendRequestRequestObject) (SendFriendRequestResponseObject, error)
@@ -8633,6 +8760,33 @@ func (sh *strictHandler) BlockPerson(w http.ResponseWriter, r *http.Request, id 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(BlockPersonResponseObject); ok {
 		if err := validResponse.VisitBlockPersonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPersonConsistency operation middleware
+func (sh *strictHandler) GetPersonConsistency(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params GetPersonConsistencyParams) {
+	var request GetPersonConsistencyRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPersonConsistency(ctx, request.(GetPersonConsistencyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPersonConsistency")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPersonConsistencyResponseObject); ok {
+		if err := validResponse.VisitGetPersonConsistencyResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

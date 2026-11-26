@@ -47,6 +47,9 @@ func flag(name string) bool {
 	return v == "true" || v == "1"
 }
 
+// MinJWTSecretLen is the shortest JWT_SECRET the server will start with.
+const MinJWTSecretLen = 32
+
 func FromEnv() (*Config, error) {
 	c := &Config{
 		DatabaseURL:        os.Getenv("DATABASE_URL"),
@@ -60,6 +63,10 @@ func FromEnv() (*Config, error) {
 	}
 	if c.JWTSecret == "" {
 		return nil, errors.New("JWT_SECRET must be set")
+	}
+	// A short secret makes every token guessable offline. `openssl rand -hex 32` gives 64 characters.
+	if len(c.JWTSecret) < MinJWTSecretLen {
+		return nil, fmt.Errorf("JWT_SECRET must be at least %d characters (try: openssl rand -hex 32)", MinJWTSecretLen)
 	}
 	if c.DatabaseURL == "" {
 		return nil, errors.New("DATABASE_URL must be set")
