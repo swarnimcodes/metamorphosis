@@ -83,6 +83,8 @@ type Profile struct {
 	AvatarURL   *string
 	UnitSystem  string
 	Timezone    string
+	// Role is user, moderator or admin.
+	Role string
 }
 
 // Login is what every sign-in path returns.
@@ -94,8 +96,8 @@ type Login struct {
 
 // ---- profile ----
 
-func profile(id uuid.UUID, username, displayName, email string, avatar *string, unit db.UnitSystem, tz string) Profile {
-	return Profile{ID: id, Username: username, DisplayName: displayName, Email: email, AvatarURL: avatar, UnitSystem: string(unit), Timezone: tz}
+func profile(id uuid.UUID, username, displayName, email string, avatar *string, unit db.UnitSystem, tz string, role db.UserRole) Profile {
+	return Profile{ID: id, Username: username, DisplayName: displayName, Email: email, AvatarURL: avatar, UnitSystem: string(unit), Timezone: tz, Role: string(role)}
 }
 
 // Me returns the caller's profile. A token for an account that no longer exists is simply unauthorized.
@@ -107,7 +109,7 @@ func (s *Service) Me(ctx context.Context, user uuid.UUID) (Profile, error) {
 	if err != nil {
 		return Profile{}, err
 	}
-	return profile(r.ID, r.Username, r.DisplayName, r.Email, r.AvatarUrl, r.UnitSystem, r.Timezone), nil
+	return profile(r.ID, r.Username, r.DisplayName, r.Email, r.AvatarUrl, r.UnitSystem, r.Timezone, r.Role), nil
 }
 
 // ProfileChanges are the fields to change; nil means unchanged.
@@ -150,7 +152,7 @@ func (s *Service) UpdateProfile(ctx context.Context, user uuid.UUID, c ProfileCh
 	if err != nil {
 		return Profile{}, err
 	}
-	return profile(r.ID, r.Username, r.DisplayName, r.Email, r.AvatarUrl, r.UnitSystem, r.Timezone), nil
+	return profile(r.ID, r.Username, r.DisplayName, r.Email, r.AvatarUrl, r.UnitSystem, r.Timezone, r.Role), nil
 }
 
 // Delete permanently removes the account and everything it owns (it all cascades from the user row). The

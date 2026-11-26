@@ -19,6 +19,57 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for GymEditKind.
+const (
+	GymEditKindDelete   GymEditKind = "delete"
+	GymEditKindEdit     GymEditKind = "edit"
+	GymEditKindMerge    GymEditKind = "merge"
+	GymEditKindRevert   GymEditKind = "revert"
+	GymEditKindUnverify GymEditKind = "unverify"
+	GymEditKindVerify   GymEditKind = "verify"
+)
+
+// Valid indicates whether the value is a known member of the GymEditKind enum.
+func (e GymEditKind) Valid() bool {
+	switch e {
+	case GymEditKindDelete:
+		return true
+	case GymEditKindEdit:
+		return true
+	case GymEditKindMerge:
+		return true
+	case GymEditKindRevert:
+		return true
+	case GymEditKindUnverify:
+		return true
+	case GymEditKindVerify:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MeRole.
+const (
+	MeRoleAdmin     MeRole = "admin"
+	MeRoleModerator MeRole = "moderator"
+	MeRoleUser      MeRole = "user"
+)
+
+// Valid indicates whether the value is a known member of the MeRole enum.
+func (e MeRole) Valid() bool {
+	switch e {
+	case MeRoleAdmin:
+		return true
+	case MeRoleModerator:
+		return true
+	case MeRoleUser:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WorkoutSetType.
 const (
 	WorkoutSetTypeDrop    WorkoutSetType = "drop"
@@ -184,6 +235,15 @@ type Gym struct {
 	Verified    bool               `json:"verified"`
 }
 
+// GymAbilities What the caller's role allows on this gym. The server enforces it; this is for showing or hiding buttons.
+type GymAbilities struct {
+	Delete bool `json:"delete"`
+	Edit   bool `json:"edit"`
+	Merge  bool `json:"merge"`
+	Revert bool `json:"revert"`
+	Verify bool `json:"verify"`
+}
+
 // GymChange defines model for GymChange.
 type GymChange struct {
 	From *string `json:"from"`
@@ -209,7 +269,10 @@ type GymCreate struct {
 
 // GymDetail defines model for GymDetail.
 type GymDetail struct {
-	// Editable False for verified gyms.
+	// Can What the caller's role allows on this gym. The server enforces it; this is for showing or hiding buttons.
+	Can GymAbilities `json:"can"`
+
+	// Editable Same as can.edit; kept for older apps.
 	Editable  bool       `json:"editable"`
 	Gym       Gym        `json:"gym"`
 	LastVisit *time.Time `json:"last_visit"`
@@ -222,10 +285,29 @@ type GymDetail struct {
 type GymEdit struct {
 	At time.Time `json:"at"`
 
-	// ByMe Editors are never named: it is the caller or someone else.
+	// By The editor's name, only for moderators and admins; null for everyone else.
+	By *string `json:"by"`
+
+	// ByMe Whether the caller made it.
 	ByMe    bool                 `json:"by_me"`
 	Changes map[string]GymChange `json:"changes"`
 	Id      openapi_types.UUID   `json:"id"`
+	Kind    GymEditKind          `json:"kind"`
+
+	// Reverted A later revert undid this edit.
+	Reverted bool `json:"reverted"`
+
+	// Revertible The caller may revert this edit now.
+	Revertible bool `json:"revertible"`
+}
+
+// GymEditKind defines model for GymEdit.Kind.
+type GymEditKind string
+
+// GymMerge defines model for GymMerge.
+type GymMerge struct {
+	// Into The gym that stays.
+	Into openapi_types.UUID `json:"into"`
 }
 
 // GymSimilarConflict defines model for GymSimilarConflict.
@@ -246,6 +328,11 @@ type GymUpdate struct {
 	MapsUrl     *string `json:"maps_url,omitempty"`
 	Name        *string `json:"name,omitempty"`
 	State       *string `json:"state,omitempty"`
+}
+
+// GymVerify defines model for GymVerify.
+type GymVerify struct {
+	Verified bool `json:"verified"`
 }
 
 // LoginResponse defines model for LoginResponse.
@@ -272,7 +359,13 @@ type Me struct {
 
 	// Timezone An IANA zone name.
 	Timezone string `json:"timezone"`
+
+	// Role What the account may do to the shared gym directory. Granted by an operator, never through the API.
+	Role MeRole `json:"role"`
 }
+
+// MeRole What the account may do to the shared gym directory. Granted by an operator, never through the API.
+type MeRole string
 
 // MeDelete defines model for MeDelete.
 type MeDelete struct {
@@ -532,8 +625,14 @@ type WorkoutUpdate struct {
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
 
+// Forbidden defines model for Forbidden.
+type Forbidden = Error
+
 // NotFound defines model for NotFound.
 type NotFound = Error
+
+// TooManyRequests defines model for TooManyRequests.
+type TooManyRequests = Error
 
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
@@ -635,6 +734,12 @@ type CreateGymJSONRequestBody = GymCreate
 
 // UpdateGymJSONRequestBody defines body for UpdateGym for application/json ContentType.
 type UpdateGymJSONRequestBody = GymUpdate
+
+// MergeGymJSONRequestBody defines body for MergeGym for application/json ContentType.
+type MergeGymJSONRequestBody = GymMerge
+
+// SetGymVerifiedJSONRequestBody defines body for SetGymVerified for application/json ContentType.
+type SetGymVerifiedJSONRequestBody = GymVerify
 
 // DeleteMeJSONRequestBody defines body for DeleteMe for application/json ContentType.
 type DeleteMeJSONRequestBody = MeDelete
@@ -766,6 +871,9 @@ type ServerInterface interface {
 	// ListGymChains Chain names already in the directory, most used first (at most 100), for suggestions.
 	// (GET /gyms/chains)
 	ListGymChains(w http.ResponseWriter, r *http.Request)
+	// DeleteGym Deletes a gym (admins only).
+	// (DELETE /gyms/{id})
+	DeleteGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// GetGym One gym, with the caller's visits to it.
 	// (GET /gyms/{id})
 	GetGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
@@ -775,6 +883,15 @@ type ServerInterface interface {
 	// GetGymHistory The gym's edits, newest first (at most 50).
 	// (GET /gyms/{id}/history)
 	GetGymHistory(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// RevertGymEdit Undoes one edit (moderators and admins).
+	// (POST /gyms/{id}/history/{edit_id}/revert)
+	RevertGymEdit(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, editId openapi_types.UUID)
+	// MergeGym Folds this duplicate gym into another (moderators and admins).
+	// (POST /gyms/{id}/merge)
+	MergeGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// SetGymVerified Marks a gym verified or not (moderators and admins).
+	// (PUT /gyms/{id}/verified)
+	SetGymVerified(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 	// DeleteMe Permanently deletes the account and everything it owns.
 	// (DELETE /me)
 	DeleteMe(w http.ResponseWriter, r *http.Request)
@@ -915,6 +1032,12 @@ func (_ Unimplemented) ListGymChains(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// DeleteGym Deletes a gym (admins only).
+// (DELETE /gyms/{id})
+func (_ Unimplemented) DeleteGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // GetGym One gym, with the caller's visits to it.
 // (GET /gyms/{id})
 func (_ Unimplemented) GetGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
@@ -930,6 +1053,24 @@ func (_ Unimplemented) UpdateGym(w http.ResponseWriter, r *http.Request, id open
 // GetGymHistory The gym's edits, newest first (at most 50).
 // (GET /gyms/{id}/history)
 func (_ Unimplemented) GetGymHistory(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RevertGymEdit Undoes one edit (moderators and admins).
+// (POST /gyms/{id}/history/{edit_id}/revert)
+func (_ Unimplemented) RevertGymEdit(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, editId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// MergeGym Folds this duplicate gym into another (moderators and admins).
+// (POST /gyms/{id}/merge)
+func (_ Unimplemented) MergeGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SetGymVerified Marks a gym verified or not (moderators and admins).
+// (PUT /gyms/{id}/verified)
+func (_ Unimplemented) SetGymVerified(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1510,6 +1651,32 @@ func (siw *ServerInterfaceWrapper) ListGymChains(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// DeleteGym operation middleware
+func (siw *ServerInterfaceWrapper) DeleteGym(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteGym(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetGym operation middleware
 func (siw *ServerInterfaceWrapper) GetGym(w http.ResponseWriter, r *http.Request) {
 
@@ -1579,6 +1746,93 @@ func (siw *ServerInterfaceWrapper) GetGymHistory(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetGymHistory(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevertGymEdit operation middleware
+func (siw *ServerInterfaceWrapper) RevertGymEdit(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "edit_id" -------------
+	var editId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "edit_id", chi.URLParam(r, "edit_id"), &editId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "edit_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevertGymEdit(w, r, id, editId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MergeGym operation middleware
+func (siw *ServerInterfaceWrapper) MergeGym(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MergeGym(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetGymVerified operation middleware
+func (siw *ServerInterfaceWrapper) SetGymVerified(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetGymVerified(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2209,10 +2463,22 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/gyms/chains", wrapper.ListGymChains)
 	})
 	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/gyms/{id}", wrapper.DeleteGym)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/gyms/{id}", wrapper.GetGym)
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/gyms/{id}", wrapper.UpdateGym)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/gyms/{id}/verified", wrapper.SetGymVerified)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/gyms/{id}/merge", wrapper.MergeGym)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/gyms/{id}/history/{edit_id}/revert", wrapper.RevertGymEdit)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/gyms/{id}/history", wrapper.GetGymHistory)
@@ -2277,7 +2543,11 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 type BadRequestJSONResponse Error
 
+type ForbiddenJSONResponse Error
+
 type NotFoundJSONResponse Error
+
+type TooManyRequestsJSONResponse Error
 
 type UnauthorizedJSONResponse Error
 
@@ -3000,6 +3270,78 @@ func (response ListGymChains401JSONResponse) VisitListGymChainsResponse(w http.R
 	return err
 }
 
+type DeleteGymRequestObject struct {
+	Id openapi_types.UUID `json:"id"`
+}
+
+type DeleteGymResponseObject interface {
+	VisitDeleteGymResponse(w http.ResponseWriter) error
+}
+
+type DeleteGym204Response struct {
+}
+
+func (response DeleteGym204Response) VisitDeleteGymResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteGym400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response DeleteGym400JSONResponse) VisitDeleteGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteGym401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteGym401JSONResponse) VisitDeleteGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteGym403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteGym403JSONResponse) VisitDeleteGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteGym404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteGym404JSONResponse) VisitDeleteGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetGymRequestObject struct {
 	Id openapi_types.UUID `json:"id"`
 }
@@ -3115,6 +3457,20 @@ func (response UpdateGym401JSONResponse) VisitUpdateGymResponse(w http.ResponseW
 	return err
 }
 
+type UpdateGym403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateGym403JSONResponse) VisitUpdateGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type UpdateGym404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response UpdateGym404JSONResponse) VisitUpdateGymResponse(w http.ResponseWriter) error {
@@ -3125,6 +3481,20 @@ func (response UpdateGym404JSONResponse) VisitUpdateGymResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGym429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response UpdateGym429JSONResponse) VisitUpdateGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -3182,6 +3552,257 @@ func (response GetGymHistory401JSONResponse) VisitGetGymHistoryResponse(w http.R
 type GetGymHistory404JSONResponse struct{ NotFoundJSONResponse }
 
 func (response GetGymHistory404JSONResponse) VisitGetGymHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevertGymEditRequestObject struct {
+	Id     openapi_types.UUID `json:"id"`
+	EditId openapi_types.UUID `json:"edit_id"`
+}
+
+type RevertGymEditResponseObject interface {
+	VisitRevertGymEditResponse(w http.ResponseWriter) error
+}
+
+type RevertGymEdit200JSONResponse Gym
+
+func (response RevertGymEdit200JSONResponse) VisitRevertGymEditResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevertGymEdit400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response RevertGymEdit400JSONResponse) VisitRevertGymEditResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevertGymEdit401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response RevertGymEdit401JSONResponse) VisitRevertGymEditResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevertGymEdit403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response RevertGymEdit403JSONResponse) VisitRevertGymEditResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevertGymEdit404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RevertGymEdit404JSONResponse) VisitRevertGymEditResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevertGymEdit409JSONResponse Error
+
+func (response RevertGymEdit409JSONResponse) VisitRevertGymEditResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MergeGymRequestObject struct {
+	Id   openapi_types.UUID `json:"id"`
+	Body *MergeGymJSONRequestBody
+}
+
+type MergeGymResponseObject interface {
+	VisitMergeGymResponse(w http.ResponseWriter) error
+}
+
+type MergeGym200JSONResponse Gym
+
+func (response MergeGym200JSONResponse) VisitMergeGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MergeGym400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response MergeGym400JSONResponse) VisitMergeGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MergeGym401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response MergeGym401JSONResponse) VisitMergeGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MergeGym403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response MergeGym403JSONResponse) VisitMergeGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MergeGym404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response MergeGym404JSONResponse) VisitMergeGymResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetGymVerifiedRequestObject struct {
+	Id   openapi_types.UUID `json:"id"`
+	Body *SetGymVerifiedJSONRequestBody
+}
+
+type SetGymVerifiedResponseObject interface {
+	VisitSetGymVerifiedResponse(w http.ResponseWriter) error
+}
+
+type SetGymVerified200JSONResponse Gym
+
+func (response SetGymVerified200JSONResponse) VisitSetGymVerifiedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetGymVerified400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SetGymVerified400JSONResponse) VisitSetGymVerifiedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetGymVerified401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SetGymVerified401JSONResponse) VisitSetGymVerifiedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetGymVerified403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SetGymVerified403JSONResponse) VisitSetGymVerifiedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetGymVerified404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SetGymVerified404JSONResponse) VisitSetGymVerifiedResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -4270,6 +4891,9 @@ type StrictServerInterface interface {
 	// ListGymChains Chain names already in the directory, most used first (at most 100), for suggestions.
 	// (GET /gyms/chains)
 	ListGymChains(ctx context.Context, request ListGymChainsRequestObject) (ListGymChainsResponseObject, error)
+	// DeleteGym Deletes a gym (admins only).
+	// (DELETE /gyms/{id})
+	DeleteGym(ctx context.Context, request DeleteGymRequestObject) (DeleteGymResponseObject, error)
 	// GetGym One gym, with the caller's visits to it.
 	// (GET /gyms/{id})
 	GetGym(ctx context.Context, request GetGymRequestObject) (GetGymResponseObject, error)
@@ -4279,6 +4903,15 @@ type StrictServerInterface interface {
 	// GetGymHistory The gym's edits, newest first (at most 50).
 	// (GET /gyms/{id}/history)
 	GetGymHistory(ctx context.Context, request GetGymHistoryRequestObject) (GetGymHistoryResponseObject, error)
+	// RevertGymEdit Undoes one edit (moderators and admins).
+	// (POST /gyms/{id}/history/{edit_id}/revert)
+	RevertGymEdit(ctx context.Context, request RevertGymEditRequestObject) (RevertGymEditResponseObject, error)
+	// MergeGym Folds this duplicate gym into another (moderators and admins).
+	// (POST /gyms/{id}/merge)
+	MergeGym(ctx context.Context, request MergeGymRequestObject) (MergeGymResponseObject, error)
+	// SetGymVerified Marks a gym verified or not (moderators and admins).
+	// (PUT /gyms/{id}/verified)
+	SetGymVerified(ctx context.Context, request SetGymVerifiedRequestObject) (SetGymVerifiedResponseObject, error)
 	// DeleteMe Permanently deletes the account and everything it owns.
 	// (DELETE /me)
 	DeleteMe(ctx context.Context, request DeleteMeRequestObject) (DeleteMeResponseObject, error)
@@ -4754,6 +5387,32 @@ func (sh *strictHandler) ListGymChains(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeleteGym operation middleware
+func (sh *strictHandler) DeleteGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request DeleteGymRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteGym(ctx, request.(DeleteGymRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteGym")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteGymResponseObject); ok {
+		if err := validResponse.VisitDeleteGymResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetGym operation middleware
 func (sh *strictHandler) GetGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	var request GetGymRequestObject
@@ -4832,6 +5491,99 @@ func (sh *strictHandler) GetGymHistory(w http.ResponseWriter, r *http.Request, i
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetGymHistoryResponseObject); ok {
 		if err := validResponse.VisitGetGymHistoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RevertGymEdit operation middleware
+func (sh *strictHandler) RevertGymEdit(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, editId openapi_types.UUID) {
+	var request RevertGymEditRequestObject
+
+	request.Id = id
+	request.EditId = editId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RevertGymEdit(ctx, request.(RevertGymEditRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RevertGymEdit")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RevertGymEditResponseObject); ok {
+		if err := validResponse.VisitRevertGymEditResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// MergeGym operation middleware
+func (sh *strictHandler) MergeGym(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request MergeGymRequestObject
+
+	request.Id = id
+
+	var body MergeGymJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MergeGym(ctx, request.(MergeGymRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MergeGym")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MergeGymResponseObject); ok {
+		if err := validResponse.VisitMergeGymResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetGymVerified operation middleware
+func (sh *strictHandler) SetGymVerified(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	var request SetGymVerifiedRequestObject
+
+	request.Id = id
+
+	var body SetGymVerifiedJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetGymVerified(ctx, request.(SetGymVerifiedRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetGymVerified")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetGymVerifiedResponseObject); ok {
+		if err := validResponse.VisitSetGymVerifiedResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

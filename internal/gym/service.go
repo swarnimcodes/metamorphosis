@@ -50,6 +50,15 @@ type Store interface {
 	LockGym(ctx context.Context, id uuid.UUID) (db.LockGymRow, error)
 	UpdateGym(ctx context.Context, arg db.UpdateGymParams) error
 	InsertGymEdit(ctx context.Context, arg db.InsertGymEditParams) error
+	GetGymEdit(ctx context.Context, arg db.GetGymEditParams) (db.GetGymEditRow, error)
+	GymUserRole(ctx context.Context, id uuid.UUID) (db.UserRole, error)
+	CountRecentGymEdits(ctx context.Context, arg db.CountRecentGymEditsParams) (int32, error)
+	SetGymVerified(ctx context.Context, arg db.SetGymVerifiedParams) error
+	SoftDeleteGym(ctx context.Context, id uuid.UUID) error
+	MoveGymWorkouts(ctx context.Context, arg db.MoveGymWorkoutsParams) (int64, error)
+	MoveUserGyms(ctx context.Context, arg db.MoveUserGymsParams) error
+	DropUserGyms(ctx context.Context, gymID uuid.UUID) error
+	MarkGymMerged(ctx context.Context, arg db.MarkGymMergedParams) error
 	ListGymEdits(ctx context.Context, arg db.ListGymEditsParams) ([]db.ListGymEditsRow, error)
 	ListGymChains(ctx context.Context, maxRows int32) ([]string, error)
 }
@@ -220,14 +229,13 @@ func validateFields(f fields) (fields, error) {
 	return f, nil
 }
 
-// Detail is one gym with the caller's history there.
+// Detail is one gym with the caller's history there and what the caller may do to it.
 type Detail struct {
 	Gym
 	// Visits is how many of the caller's workouts were logged here; LastVisit is the latest one's start.
 	Visits    int32
 	LastVisit *time.Time
-	// Editable is false for verified gyms: the seeded directory entries are curated, not crowd-edited.
-	Editable bool
+	Can       Abilities
 }
 
 func notFound(err error) error {
@@ -237,17 +245,32 @@ func notFound(err error) error {
 	return err
 }
 
-// Get returns one gym and the caller's visits to it.
+// role is the caller's role. An account that no longer exists has none, which is the same as not being signed in.
+func role(ctx context.Context, st Store, user uuid.UUID) (Role, error) {
+	r, err := st.GymUserRole(ctx, user)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", domain.Unauthorized()
+	}
+	return r, err
+}
+
+func gymFromLock(r db.LockGymRow) Gym { return fromRow(db.InsertGymRow(r)) }
+
+// Get returns one gym, the caller's visits to it and what the caller may do to it.
 func (s *Service) Get(ctx context.Context, user, id uuid.UUID) (Detail, error) {
 	r, err := s.store.GetGym(ctx, db.GetGymParams{ID: id, UserID: user})
 	if err != nil {
 		return Detail{}, notFound(err)
 	}
+	who, err := role(ctx, s.store, user)
+	if err != nil {
+		return Detail{}, err
+	}
 	g := Gym{
 		ID: r.ID, Name: r.Name, Chain: r.Chain, Area: r.Area, Address: r.Address, City: r.City, Lat: r.Lat, Lng: r.Lng,
 		MapsURL: r.MapsUrl, Verified: r.Verified, CountryCode: r.CountryCode, State: r.State,
 	}
-	d := Detail{Gym: g, Visits: r.Visits, Editable: !r.Verified}
+	d := Detail{Gym: g, Visits: r.Visits, Can: AbilitiesFor(who, r.Verified)}
 	if r.Visits > 0 {
 		d.LastVisit = &r.LastVisit
 	}
@@ -265,22 +288,130 @@ type Change struct {
 	To   *string `json:"to"`
 }
 
-// Update edits a gym that is not verified and keeps a record of what changed. Anyone may edit: the history on the
-// gym page is the check on that. An edit that changes nothing is not recorded.
+// Kinds of entry in a gym's history.
+const (
+	KindEdit     = "edit"
+	KindVerify   = "verify"
+	KindUnverify = "unverify"
+	KindDelete   = "delete"
+	KindMerge    = "merge"
+	KindRevert   = "revert"
+)
+
+const (
+	// maxEditsPerHour is how many edits an ordinary user may make in an hour. Moderators are not limited.
+	maxEditsPerHour = 30
+	editWindow      = time.Hour
+)
+
+// record writes one entry of a gym's history.
+func record(ctx context.Context, st Store, gym uuid.UUID, user uuid.UUID, kind string, changes map[string]Change, revertOf uuid.NullUUID) error {
+	if changes == nil {
+		changes = map[string]Change{}
+	}
+	raw, err := json.Marshal(changes)
+	if err != nil {
+		return err
+	}
+	return st.InsertGymEdit(ctx, db.InsertGymEditParams{
+		GymID: gym, UserID: uuid.NullUUID{UUID: user, Valid: true}, Kind: kind, Changes: raw, RevertOf: revertOf,
+	})
+}
+
+// fieldOf reads a field of the editable set by its API name.
+func fieldOf(f fields, name string) (*string, bool) {
+	switch name {
+	case "name":
+		return &f.Name, true
+	case "chain":
+		return f.Chain, true
+	case "area":
+		return f.Area, true
+	case "address":
+		return f.Address, true
+	case "city":
+		return f.City, true
+	case "state":
+		return f.State, true
+	case "country_code":
+		return f.CountryCode, true
+	case "maps_url":
+		return f.MapsURL, true
+	}
+	return nil, false
+}
+
+// setField writes a field of the editable set by its API name.
+func setField(f *fields, name string, v *string) {
+	switch name {
+	case "name":
+		if v != nil {
+			f.Name = *v
+		}
+	case "chain":
+		f.Chain = v
+	case "area":
+		f.Area = v
+	case "address":
+		f.Address = v
+	case "city":
+		f.City = v
+	case "state":
+		f.State = v
+	case "country_code":
+		f.CountryCode = v
+	case "maps_url":
+		f.MapsURL = v
+	}
+}
+
+func fieldsOf(r db.LockGymRow) fields {
+	return fields{
+		Name: r.Name, Chain: r.Chain, Area: r.Area, Address: r.Address, City: r.City, State: r.State,
+		CountryCode: r.CountryCode, MapsURL: r.MapsUrl,
+	}
+}
+
+func save(ctx context.Context, st Store, id uuid.UUID, f fields) error {
+	return st.UpdateGym(ctx, db.UpdateGymParams{
+		ID: id, Name: f.Name, Chain: f.Chain, Area: f.Area, Address: f.Address, City: f.City, State: f.State,
+		CountryCode: f.CountryCode, MapsUrl: f.MapsURL,
+	})
+}
+
+func withFields(cur db.LockGymRow, f fields) Gym {
+	return Gym{
+		ID: cur.ID, Name: f.Name, Chain: f.Chain, Area: f.Area, Address: f.Address, City: f.City, Lat: cur.Lat, Lng: cur.Lng,
+		MapsURL: f.MapsURL, Verified: cur.Verified, CountryCode: f.CountryCode, State: f.State,
+	}
+}
+
+// Update edits a gym and keeps a record of what changed. Whether the caller may depends on their role and on
+// whether the gym is verified; ordinary users are rate limited. An edit that changes nothing is not recorded.
 func (s *Service) Update(ctx context.Context, user, id uuid.UUID, p Patch) (Gym, error) {
 	var out Gym
 	err := s.tx(ctx, func(st Store) error {
+		who, err := role(ctx, st, user)
+		if err != nil {
+			return err
+		}
 		cur, err := st.LockGym(ctx, id)
 		if err != nil {
 			return notFound(err)
 		}
-		if cur.Verified {
-			return domain.InvalidCode("gym_locked", "verified gyms can't be edited")
+		if !AbilitiesFor(who, cur.Verified).Edit {
+			return domain.Forbidden("gym_locked", "only moderators can edit verified gyms")
 		}
-		old := fields{
-			Name: cur.Name, Chain: cur.Chain, Area: cur.Area, Address: cur.Address, City: cur.City, State: cur.State,
-			CountryCode: cur.CountryCode, MapsURL: cur.MapsUrl,
+		if !Staff(who) {
+			n, err := st.CountRecentGymEdits(ctx, db.CountRecentGymEditsParams{UserID: uuid.NullUUID{UUID: user, Valid: true}, Since: time.Now().Add(-editWindow)})
+			if err != nil {
+				return err
+			}
+			if n >= maxEditsPerHour {
+				return domain.RateLimited("too many gym edits, try again later")
+			}
 		}
+		old := fieldsOf(cur)
 		next := old
 		if p.Name != nil {
 			next.Name = strings.TrimSpace(*p.Name)
@@ -302,42 +433,21 @@ func (s *Service) Update(ctx context.Context, user, id uuid.UUID, p Patch) (Gym,
 		}
 
 		changes := map[string]Change{}
-		note := func(field string, from, to *string) {
+		for _, name := range []string{"name", "chain", "area", "address", "city", "state", "country_code", "maps_url"} {
+			from, _ := fieldOf(old, name)
+			to, _ := fieldOf(next, name)
 			if !sameText(from, to) {
-				changes[field] = Change{From: from, To: to}
+				changes[name] = Change{From: from, To: to}
 			}
 		}
-		name := func(v string) *string { return &v }
-		note("name", name(old.Name), name(next.Name))
-		note("chain", old.Chain, next.Chain)
-		note("area", old.Area, next.Area)
-		note("address", old.Address, next.Address)
-		note("city", old.City, next.City)
-		note("state", old.State, next.State)
-		note("country_code", old.CountryCode, next.CountryCode)
-		note("maps_url", old.MapsURL, next.MapsURL)
-
-		out = Gym{
-			ID: cur.ID, Name: next.Name, Chain: next.Chain, Area: next.Area, Address: next.Address, City: next.City,
-			Lat: cur.Lat, Lng: cur.Lng, MapsURL: next.MapsURL, Verified: cur.Verified, CountryCode: next.CountryCode,
-			State: next.State,
-		}
+		out = withFields(cur, next)
 		if len(changes) == 0 {
 			return nil
 		}
-		if err := st.UpdateGym(ctx, db.UpdateGymParams{
-			ID: id, Name: next.Name, Chain: next.Chain, Area: next.Area, Address: next.Address, City: next.City,
-			State: next.State, CountryCode: next.CountryCode, MapsUrl: next.MapsURL,
-		}); err != nil {
+		if err := save(ctx, st, id, next); err != nil {
 			return err
 		}
-		raw, err := json.Marshal(changes)
-		if err != nil {
-			return err
-		}
-		return st.InsertGymEdit(ctx, db.InsertGymEditParams{
-			GymID: id, UserID: uuid.NullUUID{UUID: user, Valid: true}, Changes: raw,
-		})
+		return record(ctx, st, id, user, KindEdit, changes, uuid.NullUUID{})
 	})
 	return out, err
 }
@@ -349,21 +459,195 @@ func sameText(a, b *string) bool {
 	return *a == *b
 }
 
-// Edit is one entry of a gym's history. The editor is only ever "you" or someone else.
-type Edit struct {
-	ID      uuid.UUID
-	ByMe    bool
-	At      time.Time
-	Changes map[string]Change
+// SetVerified marks a gym verified or not. Moderators and admins only. Saying what is already so does nothing.
+func (s *Service) SetVerified(ctx context.Context, user, id uuid.UUID, verified bool) (Gym, error) {
+	var out Gym
+	err := s.tx(ctx, func(st Store) error {
+		who, err := role(ctx, st, user)
+		if err != nil {
+			return err
+		}
+		if !AbilitiesFor(who, false).Verify {
+			return domain.Forbidden("forbidden", "only moderators can verify gyms")
+		}
+		cur, err := st.LockGym(ctx, id)
+		if err != nil {
+			return notFound(err)
+		}
+		out = gymFromLock(cur)
+		out.Verified = verified
+		if cur.Verified == verified {
+			return nil
+		}
+		if err := st.SetGymVerified(ctx, db.SetGymVerifiedParams{ID: id, Verified: verified, By: uuid.NullUUID{UUID: user, Valid: true}}); err != nil {
+			return err
+		}
+		kind := KindUnverify
+		if verified {
+			kind = KindVerify
+		}
+		return record(ctx, st, id, user, kind, nil, uuid.NullUUID{})
+	})
+	return out, err
 }
 
-// maxHistory is how many edits the gym page lists.
+// Remove deletes a gym (it is kept, hidden: workouts logged there keep their gym). Admins only.
+func (s *Service) Remove(ctx context.Context, user, id uuid.UUID) error {
+	return s.tx(ctx, func(st Store) error {
+		who, err := role(ctx, st, user)
+		if err != nil {
+			return err
+		}
+		if !AbilitiesFor(who, false).Delete {
+			return domain.Forbidden("forbidden", "only admins can delete gyms")
+		}
+		if _, err := st.LockGym(ctx, id); err != nil {
+			return notFound(err)
+		}
+		if err := st.SoftDeleteGym(ctx, id); err != nil {
+			return err
+		}
+		return record(ctx, st, id, user, KindDelete, nil, uuid.NullUUID{})
+	})
+}
+
+// Merge folds a duplicate gym into another: its workouts and saved-gym entries move to the target and it is
+// hidden. Moderators and admins only. Returns the target.
+func (s *Service) Merge(ctx context.Context, user, sourceID, targetID uuid.UUID) (Gym, error) {
+	if targetID == uuid.Nil {
+		return Gym{}, domain.Invalid("missing field `into`")
+	}
+	if sourceID == targetID {
+		return Gym{}, domain.Invalid("a gym can't be merged into itself")
+	}
+	var out Gym
+	err := s.tx(ctx, func(st Store) error {
+		who, err := role(ctx, st, user)
+		if err != nil {
+			return err
+		}
+		if !AbilitiesFor(who, false).Merge {
+			return domain.Forbidden("forbidden", "only moderators can merge gyms")
+		}
+		// Lock in a fixed order so two merges in opposite directions cannot deadlock.
+		first, second := sourceID, targetID
+		if strings.Compare(first.String(), second.String()) > 0 {
+			first, second = second, first
+		}
+		rows := map[uuid.UUID]db.LockGymRow{}
+		for _, id := range []uuid.UUID{first, second} {
+			r, err := st.LockGym(ctx, id)
+			if err != nil {
+				return notFound(err)
+			}
+			rows[id] = r
+		}
+		source, target := rows[sourceID], rows[targetID]
+		src := uuid.NullUUID{UUID: sourceID, Valid: true}
+		dst := uuid.NullUUID{UUID: targetID, Valid: true}
+		if _, err := st.MoveGymWorkouts(ctx, db.MoveGymWorkoutsParams{SourceID: src, TargetID: dst}); err != nil {
+			return err
+		}
+		if err := st.MoveUserGyms(ctx, db.MoveUserGymsParams{SourceID: sourceID, TargetID: targetID}); err != nil {
+			return err
+		}
+		if err := st.DropUserGyms(ctx, sourceID); err != nil {
+			return err
+		}
+		if err := st.MarkGymMerged(ctx, db.MarkGymMergedParams{ID: sourceID, TargetID: dst}); err != nil {
+			return err
+		}
+		name := source.Name
+		if err := record(ctx, st, targetID, user, KindMerge, map[string]Change{"merged_gym": {From: &name}}, uuid.NullUUID{}); err != nil {
+			return err
+		}
+		out = gymFromLock(target)
+		return nil
+	})
+	return out, err
+}
+
+// Revert undoes one edit by putting the old values back. Moderators and admins only. It refuses when a field the
+// edit touched has been changed again since: undoing that edit would silently undo the later one too.
+func (s *Service) Revert(ctx context.Context, user, gymID, editID uuid.UUID) (Gym, error) {
+	var out Gym
+	err := s.tx(ctx, func(st Store) error {
+		who, err := role(ctx, st, user)
+		if err != nil {
+			return err
+		}
+		if !AbilitiesFor(who, false).Revert {
+			return domain.Forbidden("forbidden", "only moderators can revert edits")
+		}
+		cur, err := st.LockGym(ctx, gymID)
+		if err != nil {
+			return notFound(err)
+		}
+		e, err := st.GetGymEdit(ctx, db.GetGymEditParams{ID: editID, GymID: gymID})
+		if err != nil {
+			return notFound(err)
+		}
+		if e.Kind != KindEdit {
+			return domain.Invalid("only edits can be reverted")
+		}
+		if e.Reverted {
+			return domain.Conflict("already_reverted", "this edit was already reverted")
+		}
+		var changes map[string]Change
+		if err := json.Unmarshal(e.Changes, &changes); err != nil {
+			return err
+		}
+		old := fieldsOf(cur)
+		next := old
+		inverse := map[string]Change{}
+		for name, c := range changes {
+			now, ok := fieldOf(old, name)
+			if !ok {
+				continue
+			}
+			if !sameText(now, c.To) {
+				return domain.Conflict("changed_since", "a later edit changed this again; revert that one first")
+			}
+			setField(&next, name, c.From)
+			inverse[name] = Change{From: c.To, To: c.From}
+		}
+		if next, err = validateFields(next); err != nil {
+			return err
+		}
+		if err := save(ctx, st, gymID, next); err != nil {
+			return err
+		}
+		out = withFields(cur, next)
+		return record(ctx, st, gymID, user, KindRevert, inverse, uuid.NullUUID{UUID: editID, Valid: true})
+	})
+	return out, err
+}
+
+// Edit is one entry of a gym's history. Only moderators are told who made it; everyone else just sees "you" or
+// "a member".
+type Edit struct {
+	ID   uuid.UUID
+	Kind string
+	ByMe bool
+	// By is the editor's display name, set only for a moderator or admin reading.
+	By      *string
+	At      time.Time
+	Changes map[string]Change
+	// Reverted: a later entry undid this one. Revertible: the caller may undo it now.
+	Reverted, Revertible bool
+}
+
+// maxHistory is how many entries the gym page lists.
 const maxHistory = 50
 
-// History lists a gym's edits, newest first.
+// History lists a gym's history, newest first.
 func (s *Service) History(ctx context.Context, user, id uuid.UUID) ([]Edit, error) {
 	if _, err := s.store.GetGym(ctx, db.GetGymParams{ID: id, UserID: user}); err != nil {
 		return nil, notFound(err)
+	}
+	who, err := role(ctx, s.store, user)
+	if err != nil {
+		return nil, err
 	}
 	rows, err := s.store.ListGymEdits(ctx, db.ListGymEditsParams{GymID: id, MaxRows: maxHistory})
 	if err != nil {
@@ -375,7 +659,14 @@ func (s *Service) History(ctx context.Context, user, id uuid.UUID) ([]Edit, erro
 		if err := json.Unmarshal(r.Changes, &ch); err != nil {
 			return nil, err
 		}
-		out = append(out, Edit{ID: r.ID, ByMe: r.UserID.Valid && r.UserID.UUID == user, At: r.CreatedAt, Changes: ch})
+		e := Edit{
+			ID: r.ID, Kind: r.Kind, ByMe: r.UserID.Valid && r.UserID.UUID == user, At: r.CreatedAt, Changes: ch,
+			Reverted: r.Reverted, Revertible: Staff(who) && r.Kind == KindEdit && !r.Reverted,
+		}
+		if Staff(who) {
+			e.By = r.EditorName
+		}
+		out = append(out, e)
 	}
 	return out, nil
 }

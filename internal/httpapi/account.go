@@ -43,7 +43,7 @@ func userAgent(ua *string) *string {
 func me(p account.Profile) gen.Me {
 	return gen.Me{
 		Id: p.ID, Username: p.Username, DisplayName: p.DisplayName, Email: p.Email,
-		AvatarUrl: p.AvatarURL, UnitSystem: p.UnitSystem, Timezone: p.Timezone,
+		AvatarUrl: p.AvatarURL, UnitSystem: p.UnitSystem, Timezone: p.Timezone, Role: gen.MeRole(p.Role),
 	}
 }
 

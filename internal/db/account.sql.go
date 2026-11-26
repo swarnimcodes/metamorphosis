@@ -22,7 +22,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 }
 
 const getMe = `-- name: GetMe :one
-select id, username, display_name, email, avatar_url, unit_system, timezone
+select id, username, display_name, email, avatar_url, unit_system, timezone, role
   from users
  where id = $1 and deleted_at is null
 `
@@ -35,6 +35,7 @@ type GetMeRow struct {
 	AvatarUrl   *string    `json:"avatar_url"`
 	UnitSystem  UnitSystem `json:"unit_system"`
 	Timezone    string     `json:"timezone"`
+	Role        UserRole   `json:"role"`
 }
 
 func (q *Queries) GetMe(ctx context.Context, id uuid.UUID) (GetMeRow, error) {
@@ -48,6 +49,7 @@ func (q *Queries) GetMe(ctx context.Context, id uuid.UUID) (GetMeRow, error) {
 		&i.AvatarUrl,
 		&i.UnitSystem,
 		&i.Timezone,
+		&i.Role,
 	)
 	return i, err
 }
@@ -167,7 +169,7 @@ update users
        unit_system = coalesce($2::unit_system, unit_system),
        timezone = coalesce($3, timezone)
  where id = $4 and deleted_at is null
-returning id, username, display_name, email, avatar_url, unit_system, timezone
+returning id, username, display_name, email, avatar_url, unit_system, timezone, role
 `
 
 type UpdateMeParams struct {
@@ -185,6 +187,7 @@ type UpdateMeRow struct {
 	AvatarUrl   *string    `json:"avatar_url"`
 	UnitSystem  UnitSystem `json:"unit_system"`
 	Timezone    string     `json:"timezone"`
+	Role        UserRole   `json:"role"`
 }
 
 // A NULL parameter leaves the column as it is.
@@ -204,6 +207,7 @@ func (q *Queries) UpdateMe(ctx context.Context, arg UpdateMeParams) (UpdateMeRow
 		&i.AvatarUrl,
 		&i.UnitSystem,
 		&i.Timezone,
+		&i.Role,
 	)
 	return i, err
 }

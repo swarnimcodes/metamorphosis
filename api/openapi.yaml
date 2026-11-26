@@ -278,8 +278,8 @@ paths:
       tags: [gyms]
       summary: Edits a gym that is not verified.
       description: |
-        Anyone may edit; every change is recorded in the gym's history. Verified gyms answer 400 `gym_locked`. A
-        change that alters nothing is not recorded.
+        Anyone may edit an unverified gym; verified gyms need a moderator or admin (403 `gym_locked`). Every change is
+        recorded in the gym's history, and one that alters nothing is not. Ordinary users may make 30 edits an hour (429).
       requestBody:
         required: true
         content:
@@ -293,7 +293,90 @@ paths:
               schema: { $ref: "#/components/schemas/Gym" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      operationId: deleteGym
+      tags: [gyms]
+      summary: Deletes a gym (admins only).
+      description: "The gym is hidden, not erased: workouts logged there keep it."
+      responses:
+        "204": { description: Deleted. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /gyms/{id}/verified:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      operationId: setGymVerified
+      tags: [gyms]
+      summary: Marks a gym verified or not (moderators and admins).
+      description: Saying what is already so changes nothing and is not recorded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GymVerify" }
+      responses:
+        "200":
+          description: The gym.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Gym" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /gyms/{id}/merge:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: mergeGym
+      tags: [gyms]
+      summary: Folds this duplicate gym into another (moderators and admins).
+      description: Its workouts and saved-gym entries move to `into`, and this gym is hidden. Answers the gym that stays.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GymMerge" }
+      responses:
+        "200":
+          description: The gym that stays.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Gym" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /gyms/{id}/history/{edit_id}/revert:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: edit_id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: revertGymEdit
+      tags: [gyms]
+      summary: Undoes one edit (moderators and admins).
+      description: |
+        Puts the old values back. 409 `changed_since` when a later edit changed the same field again, 409
+        `already_reverted` when it was undone before. Only plain edits can be reverted.
+      responses:
+        "200":
+          description: The gym after the revert.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Gym" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The edit cannot be undone now.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   /gyms/{id}/history:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -634,6 +717,12 @@ components:
     NotFound:
       description: No such record (or it belongs to someone else).
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: The account's role does not allow this.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    TooManyRequests:
+      description: Too many edits in the last hour (code `rate_limited`).
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
   schemas:
     Error:
@@ -656,7 +745,7 @@ components:
     # >>> account
     Me:
       type: object
-      required: [id, username, display_name, email, avatar_url, unit_system, timezone]
+      required: [id, username, display_name, email, avatar_url, unit_system, timezone, role]
       properties:
         id: { x-order: 1, type: string, format: uuid }
         username: { x-order: 2, type: string }
@@ -665,6 +754,7 @@ components:
         avatar_url: { x-order: 5, type: string, nullable: true }
         unit_system: { x-order: 6, type: string, description: "`metric` or `imperial`." }
         timezone: { x-order: 7, type: string, description: An IANA zone name. }
+        role: { x-order: 8, type: string, enum: [user, moderator, admin], description: "What the account may do to the shared gym directory. Granted by an operator, never through the API." }
     MeUpdate:
       type: object
       description: Every field is optional; null or absent leaves it unchanged.
@@ -779,12 +869,33 @@ components:
         maps_url: { type: string }
     GymDetail:
       type: object
-      required: [gym, visits, last_visit, editable]
+      required: [gym, visits, last_visit, editable, can]
       properties:
         gym: { $ref: "#/components/schemas/Gym" }
         visits: { type: integer, format: int32, description: "The caller's workouts logged at this gym." }
         last_visit: { type: string, format: date-time, nullable: true }
-        editable: { type: boolean, description: "False for verified gyms." }
+        editable: { type: boolean, description: "Same as can.edit; kept for older apps." }
+        can: { $ref: "#/components/schemas/GymAbilities" }
+    GymAbilities:
+      type: object
+      description: What the caller's role allows on this gym. The server enforces it; this is for showing or hiding buttons.
+      required: [edit, verify, revert, merge, delete]
+      properties:
+        edit: { type: boolean }
+        verify: { type: boolean }
+        revert: { type: boolean }
+        merge: { type: boolean }
+        delete: { type: boolean }
+    GymVerify:
+      type: object
+      required: [verified]
+      properties:
+        verified: { type: boolean }
+    GymMerge:
+      type: object
+      required: [into]
+      properties:
+        into: { type: string, format: uuid, description: The gym that stays. }
     GymChange:
       type: object
       required: [from, to]
@@ -793,10 +904,14 @@ components:
         to: { type: string, nullable: true }
     GymEdit:
       type: object
-      required: [id, by_me, at, changes]
+      required: [id, kind, by_me, by, at, changes, reverted, revertible]
       properties:
         id: { type: string, format: uuid }
-        by_me: { type: boolean, description: "Editors are never named: it is the caller or someone else." }
+        kind: { type: string, enum: [edit, verify, unverify, delete, merge, revert] }
+        by_me: { type: boolean, description: "Whether the caller made it." }
+        by: { type: string, nullable: true, description: "The editor's name, only for moderators and admins; null for everyone else." }
+        reverted: { type: boolean, description: A later revert undid this edit. }
+        revertible: { type: boolean, description: The caller may revert this edit now. }
         at: { type: string, format: date-time }
         changes: { type: object, additionalProperties: { $ref: "#/components/schemas/GymChange" } }
     GymSimilarConflict:

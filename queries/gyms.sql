@@ -79,10 +79,57 @@ update gyms set name = @name, chain = @chain, area = @area, address = @address, 
  where id = @id;
 
 -- name: InsertGymEdit :exec
-insert into gym_edits (gym_id, user_id, changes) values (@gym_id, @user_id, @changes);
+insert into gym_edits (gym_id, user_id, kind, changes, revert_of)
+values (@gym_id, @user_id, @kind, @changes, @revert_of);
 
 -- name: ListGymEdits :many
-select id, user_id, changes, created_at from gym_edits where gym_id = @gym_id order by created_at desc, id desc limit @max_rows;
+-- editor_name is only ever shown to moderators; the service drops it for everyone else.
+select e.id, e.user_id, e.kind, e.changes, e.revert_of, e.created_at,
+       u.display_name as editor_name,
+       exists (select 1 from gym_edits r where r.revert_of = e.id) as reverted
+  from gym_edits e
+  left join users u on u.id = e.user_id
+ where e.gym_id = @gym_id
+ order by e.created_at desc, e.id desc
+ limit @max_rows;
+
+-- name: GetGymEdit :one
+select e.id, e.kind, e.changes,
+       exists (select 1 from gym_edits r where r.revert_of = e.id) as reverted
+  from gym_edits e
+ where e.id = @id and e.gym_id = @gym_id;
+
+-- name: GymUserRole :one
+select role from users where id = @id and deleted_at is null;
+
+-- name: CountRecentGymEdits :one
+-- Edits and reverts a user made since a moment: the edit rate limit.
+select count(*)::int4 from gym_edits
+ where user_id = @user_id and kind in ('edit', 'revert') and created_at > @since;
+
+-- name: SetGymVerified :exec
+update gyms set verified = @verified,
+                verified_at = case when @verified then now() end,
+                verified_by = case when @verified then sqlc.narg('by')::uuid end
+ where id = @id;
+
+-- name: SoftDeleteGym :exec
+update gyms set deleted_at = now() where id = @id and deleted_at is null;
+
+-- name: MoveGymWorkouts :execrows
+update workouts set gym_id = @target_id where gym_id = @source_id;
+
+-- name: MoveUserGyms :exec
+-- Saved gyms follow the merge. A user's default is not carried over: they may already have another one.
+insert into user_gyms (user_id, gym_id, is_default)
+select ug.user_id, @target_id::uuid, false from user_gyms ug where ug.gym_id = @source_id
+on conflict do nothing;
+
+-- name: DropUserGyms :exec
+delete from user_gyms where gym_id = @gym_id;
+
+-- name: MarkGymMerged :exec
+update gyms set deleted_at = now(), merged_into_id = @target_id where id = @id and deleted_at is null;
 
 -- name: ListGymChains :many
 -- Chains already in the directory, most used first: the suggestions for the chain field.
